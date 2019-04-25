@@ -73,10 +73,12 @@ contains
 
     logical, pointer :: &
          config_use_forcing, &
-         config_use_data_icebergs
+         config_use_data_icebergs, &
+         config_use_atmosphere_dustBC_flux
 
     call MPAS_pool_get_config(domain % configs, "config_use_forcing", config_use_forcing)
     call MPAS_pool_get_config(domain % configs, "config_use_data_icebergs", config_use_data_icebergs)
+    call MPAS_pool_get_config(domain % configs, "config_use_atmosphere_dustBC_flux", config_use_atmosphere_dustBC_flux)
 
     if (config_use_forcing) then
 
@@ -90,6 +92,9 @@ contains
 
     ! init the data iceberg forcing
     if (config_use_data_icebergs) call init_data_iceberg_forcing(domain, clock)
+
+    ! init the data for aerosol forcing
+    if (config_use_atmosphere_dustBC_flux) call init_data_dustBC_forcing(domain)
 
   end subroutine seaice_forcing_init
 
@@ -285,6 +290,89 @@ contains
          .false.)
 
   end subroutine init_atmospheric_forcing_CORE
+
+!|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+!
+!  init_data_dustBC_forcing
+!
+!> \brief Initialize the atmospheric dust and black carbon forcing objects
+!> \author Nicole Jeffery, LANL
+!> \date 04-25-2019
+!> \details
+!>  This routine reads calls the MPAS_forcing module subroutines that initializes
+!>  the dust and black carbon atmospheric inputs.  Dust source is the same as the monthly atm-ocean BGC climatology.
+!>  The black carbon source is from cam5.
+!
+!-----------------------------------------------------------------------
+
+  subroutine init_data_dustBC_forcing(domain)
+
+    type(domain_type) :: domain
+
+    character(len=strKIND), pointer :: &
+         config_forcing_start_time, &
+         config_forcing_cycle_start, &
+         config_forcing_cycle_duration
+
+    logical, pointer :: &
+         config_do_restart
+
+    character(len=strKIND) :: &
+         forcingIntervalSixHourly, &
+         forcingReferenceTimeSixHourly, &
+         forcingIntervalMonthly, &
+         forcingReferenceTimeMonthly
+
+    ! get atmospheric forcing configuration options
+    call MPAS_pool_get_config(domain % configs, "config_forcing_start_time", config_forcing_start_time)
+    call MPAS_pool_get_config(domain % configs, "config_forcing_cycle_start", config_forcing_cycle_start)
+    call MPAS_pool_get_config(domain % configs, "config_forcing_cycle_duration", config_forcing_cycle_duration)
+    call MPAS_pool_get_config(domain % configs, "config_do_restart", config_do_restart)
+
+    ! create the monthly forcing group
+    call MPAS_forcing_init_group(&
+         seaiceForcingGroups, &
+         "seaice_dustBC_forcing_monthly", &
+         domain, &
+         '0000-01-01_00:00:00', &
+         '0000-01-01_00:00:00', &
+         '0001-00-00_00:00:00', &
+         config_do_restart)
+
+    forcingIntervalMonthly = "00-01-00_00:00:00"
+    forcingReferenceTimeMonthly = "0001-01-15_00:00:00"
+
+    call MPAS_forcing_init_field(&
+         domain % streamManager, &
+         seaiceForcingGroups, &
+         "seaice_dustBC_forcing_monthly", &
+         "blackCarbonFlux", &
+         "monthlyBlackCarbonFlux", &
+         "biogeochemistry", &
+         "blackCarbonFlux", &
+         "linear", &
+         forcingReferenceTimeMonthly, &
+         forcingIntervalMonthly)
+    call MPAS_forcing_init_field(&
+         domain % streamManager, &
+         seaiceForcingGroups, &
+         "seaice_dustBC_forcing_monthly", &
+         "dust_FLUZ_IN", &
+         "monthlyDustFlux", &
+         "biogeochemistry", &
+         "dust_FLUZ_IN", &
+         "linear", &
+         forcingReferenceTimeMonthly, &
+         forcingIntervalMonthly)
+
+    call MPAS_forcing_init_field_data(&
+         seaiceForcingGroups, &
+         "seaice_dustBC_forcing_monthly", &
+         domain % streamManager, &
+         config_do_restart, &
+         .false.)
+
+  end subroutine init_data_dustBC_forcing
 
 !-----------------------------------------------------------------------
 ! runtime
@@ -719,7 +807,8 @@ contains
     type (mpas_pool_type), pointer :: &
          mesh, &
          atmosCoupling, &
-         atmosForcing
+         atmosForcing, &
+         biogeochemistry
 
     real(kind=RKIND), dimension(:), pointer :: &
          airDensity, &
@@ -729,10 +818,20 @@ contains
          sensibleTransferCoefficient, &
          latentTransferCoefficient, &
          uAirStress, &
-         vAirStress
+         vAirStress, &
+         blackCarbonFlux, &
+         dust_FLUZ_IN
 
     real(kind=RKIND) :: &
          airStressCoefficient
+
+    real(kind=RKIND), dimension(:,:), pointer :: &
+         atmosBlackCarbonFlux, &
+         atmosDustFlux
+
+    logical, pointer :: &
+         config_use_column_biogeochemistry, &
+         config_use_atmosphere_dustBC_flux
 
     integer, pointer :: &
          nCellsSolve
@@ -769,6 +868,26 @@ contains
        vAirStress(iCell) = vAirVelocity(iCell) * airStressCoefficient
 
     enddo ! iCell
+
+       ! biogeochemistry
+    call MPAS_pool_get_config(block % configs, "config_use_column_biogeochemistry", config_use_column_biogeochemistry)
+    call MPAS_pool_get_config(block % configs, "config_use_atmosphere_dustBC_flux", config_use_atmosphere_dustBC_flux)
+
+    if (config_use_atmosphere_dustBC_flux) then
+    if (config_use_column_biogeochemistry) then
+          call MPAS_pool_get_subpool(block % structs, "biogeochemistry", biogeochemistry)
+          call MPAS_pool_get_array(biogeochemistry, "blackCarbonFlux", blackCarbonFlux)
+          call MPAS_pool_get_array(biogeochemistry, "dust_FLUZ_IN", dust_FLUZ_IN)
+          call MPAS_pool_get_array(biogeochemistry, "atmosBlackCarbonFlux", atmosBlackCarbonFlux)
+          call MPAS_pool_get_array(biogeochemistry, "atmosDustFlux", atmosDustFlux)
+          do iCell = 1, nCellsSolve
+             atmosBlackCarbonFlux(:,iCell) = 0.0_RKIND
+             atmosDustFlux(:,iCell) = 0.0_RKIND
+             atmosBlackCarbonFlux(1,iCell) = blackCarbonFlux(iCell)
+             atmosDustFlux(:,iCell) = dust_FLUZ_IN(iCell)
+          enddo
+    endif
+    endif
 
   end subroutine post_atmospheric_forcing
 
