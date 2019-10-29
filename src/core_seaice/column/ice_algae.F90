@@ -957,7 +957,7 @@
          S_col      , & ! surface area of collector (um^2)
          P_b        , & ! projected area of diatoms (um^2)
          V_c        , & ! volume of collector  (um^3)
-         V_alg          ! volume of algae (um^3)
+         V_layer        ! volume of ice in a layer column of radius r_c (um^3)
 
       real (kind=dbl_kind), dimension(nbtrcr) :: &
          mobile           ! c0 if mobile, c1 otherwise
@@ -967,8 +967,8 @@
       real (kind=dbl_kind), parameter :: &
          accuracy = 1.0e-14_dbl_kind, &
          r_c  = 3.0e3_dbl_kind     , & ! ice crystal radius (um)
-         r_bac= 15.0_dbl_kind    , & ! diatom large radius (um)
-         r_alg= 10.0_dbl_kind    , & ! diatom small radius (um)
+         r_bac= 4.7_dbl_kind       , & ! Nitzschia Frigida diatom radius (um) for volume 434 um**3 
+         r_alg= 10.0_dbl_kind      , & ! alternate diatom radius (um)
          N_vol = 0.04e-12_dbl_kind  , & ! (g) Nitrogen per um^3
          Ng_to_mmol =0.0140067_dbl_kind , & ! (g/mmol) Nitrogen
          f_s = c1 , &  ! fracton of sites available for saturation
@@ -1052,8 +1052,8 @@
       S_col   = 4.0_dbl_kind*pi*r_c**2
       P_b     = pi*r_bac**2    !*10-6 for colloids
       V_c     = 4.0_dbl_kind*pi*r_c**3/3.0_dbl_kind*(1.0e-6_dbl_kind)**3  ! (m^3) sphere
-      V_alg   = pi/6.0_dbl_kind*r_bac*r_alg**2       ! prolate spheroid (*10-9 for colloids)
-      Sat_conc= f_s*f_a*f_v*(c1-phi_max)/V_c*S_col/P_b*N_vol*V_alg/Ng_to_mmol
+      V_layer = hin * zspace * pi * r_c**2   !Volume of ice layer of column or radius r_c 
+      Sat_conc= f_s*f_a*f_v*(c1-phi_max)/V_c*S_col/P_b*N_vol*V_layer/Ng_to_mmol
       !mmol/m^3 (algae, don, hum...) and umols/m^3 for colloids 
 
       !-----------------------------------------------------------------
