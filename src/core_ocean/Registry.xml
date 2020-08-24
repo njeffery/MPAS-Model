@@ -56,6 +56,12 @@
 		<dim name="nVertLevelsP1" definition="nVertLevels+1" units="unitless"
 			 description="The number of interfaces in the vertical direction."
 		/>
+		<dim name="nBenthicVertLevels" definition="29" units="unitless"
+                         description="The number of levels in the benthos vertical direction."
+                />
+                <dim name="nBenthicVertLevelsP1" definition="nBenthicVertLevels+1" units="unitless"
+                         description="The number of interfaces in the benthos vertical direction."
+                />
 		<dim name="nPoints" definition="1" units="unitless"
 			 description="The number of points for AM_pointwiseStats"
 		/>
@@ -1630,6 +1636,8 @@
 
 			<stream name="mesh"/>
 			<var_struct name="tracers"/>
+			<var_struct name="seafloorTracers"/>
+                        <var_struct name="seafloorStorage"/>
 			<var name="indMLD"/>
 			<var name="normalVelocity"/>
 			<var name="layerThickness"/>

@@ -70,6 +70,7 @@ module ocn_forward_mode
    use ocn_tracer_ecosys
    use ocn_tracer_DMS
    use ocn_tracer_MacroMolecules
+   use ocn_tracer_benthos
    use ocn_tracer_surface_restoring
    use ocn_gm
 
@@ -230,6 +231,8 @@ module ocn_forward_mode
       call ocn_tracer_DMS_init(domain, err_tmp)
       ierr = ior(ierr,err_tmp)
       call ocn_tracer_MacroMolecules_init(domain, err_tmp)
+      ierr = ior(ierr,err_tmp)
+      call ocn_benthos_tracer_init(domain, err_tmp)
       ierr = ior(ierr,err_tmp)
 
       call ocn_vmix_init(domain, err_tmp)

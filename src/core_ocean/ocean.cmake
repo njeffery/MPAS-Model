@@ -76,6 +76,7 @@ list(APPEND RAW_SOURCES
   core_ocean/shared/mpas_ocn_tracer_TTD.F
   core_ocean/shared/mpas_ocn_tracer_ecosys.F
   core_ocean/shared/mpas_ocn_tracer_DMS.F
+  core_ocean/shared/mpas_ocn_tracer_benthos.F
   core_ocean/shared/mpas_ocn_tracer_MacroMolecules.F
   core_ocean/shared/mpas_ocn_high_freq_thickness_hmix_del2.F
   core_ocean/shared/mpas_ocn_tracer_surface_flux_to_tend.F
@@ -128,6 +129,8 @@ set(BGC_FILES
   core_ocean/BGC/BGC_parms.F90
   core_ocean/BGC/DMS_mod.F90
   core_ocean/BGC/DMS_parms.F90
+  core_ocean/BGC/benthos_mod.F90
+  core_ocean/BGC/benthos_parms.F90
   core_ocean/BGC/MACROS_mod.F90
   core_ocean/BGC/MACROS_parms.F90
   core_ocean/BGC/co2calc.F90

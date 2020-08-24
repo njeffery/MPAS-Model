@@ -1,0 +1,1708 @@
+	<nml_record name="tracer_forcing_benthosTracers">
+		<nml_option name="config_use_benthosTracers" type="logical" default_value=".false." units="unitless"
+			description="if true, the 'benthosGRP' category is enabled for the run"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_use_benthosTracers_sea_ice_coupling" type="logical" default_value=".false." units="unitless"
+			description="if true, couple benthos fields with sea ice"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_set_benthos_flags" type="integer" default_value="0" units="unitless"
+			description="postive integers set testcases which override remaining flags. If negative, defer to user specified flag options"
+			possible_values="integers less than or equal to 11"
+		/>
+		<nml_option name="config_use_carbonate_saturation" type="logical" default_value=".true." units="unitless"
+			description="if true, compute carbonate chemistry"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_use_secondary_reactions" type="logical" default_value=".true." units="unitless"
+			description="if true, compute secondary reaction chemistry"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_use_depth_dependent_porosity" type="logical" default_value=".true." units="unitless"
+			description="if true, sets depth dependence of porosity"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_use_non_zero_diffusivity" type="logical" default_value=".true." units="unitless"
+			description="if false, sets diffusivity to zero"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_use_sedimentation" type="logical" default_value=".true." units="unitless"
+			description="if true, apply sediment fluxes to then benthos"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_use_positive_sedimentation" type="logical" default_value=".true." units="unitless"
+			description="if false, sediments are resuspended from the benthos"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_use_fast_sedimentation" type="logical" default_value=".false." units="unitless"
+			description="if true, incease sedimentation rate for advection testing"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_use_bgc_sinking_flux" type="logical" default_value=".true." units="unitless"
+			description="if true, allow particulate sinking fluxes of bgc tracers to the benthos"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_use_step_initial_profiles" type="logical" default_value=".false." units="unitless"
+			description="if true, initialize benthos tracer vertical profiles as step functions"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_use_benthic_reactions" type="logical" default_value=".true." units="unitless"
+			description="if true, enables reaction terms"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_use_flux_correction" type="logical" default_value=".true." units="unitless"
+			description="if true, track transport flux errors in deep storage for conservation"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_use_ocean_conc" type="logical" default_value=".true." units="unitless"
+			description="if true, use bottom ocean concentrations of solutes in surface boundary condition"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_use_deep_source" type="logical" default_value=".true." units="unitless"
+			description="if true, allow source fluxes below the active benthos layers"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_use_constant_diffusivity" type="logical" default_value=".false." units="unitless"
+			description="if true, diffusivity becomes constant with depth"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_benthosTracers_diagnostic_fields_level1" type="logical" default_value=".false." units="unitless"
+			description="if true, make variables in benthosDiagFieldsLevel1 available for output"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_benthosTracers_diagnostic_fields_level2" type="logical" default_value=".false." units="unitless"
+			description="if true, make variables in benthosDiagFieldsLevel2 available for output"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_benthosTracers_diagnostic_fields_level3" type="logical" default_value=".false." units="unitless"
+			description="if true, make variables in benthosDiagFieldsLevel3 available for output"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_benthosTracers_diagnostic_fields_level4" type="logical" default_value=".false." units="unitless"
+			description="if true, make variables in benthosDiagFieldsLevel4 available for output"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_benthosTracers_diagnostic_fields_level5" type="logical" default_value=".false." units="unitless"
+			description="if true, make variables in benthosDiagFieldsLevel5 available for output"
+			possible_values=".true. or .false."
+		/>
+	</nml_record>
+
+	<packages>
+		<package name="benthosTracersPKG" description="This package includes variables required to include benthosTracers."/>
+	</packages>
+
+	<var_struct name="forcing" time_levs="1">
+		<var_struct name="seafloortracers" time_levs="1">
+			<var_array name="benthosTracers" dimensions="nBenthicVertLevelsP1 nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="pocaBenthos" array_group="benthosGRP" units="mmol C kg^{-1}"
+					description="Labile Particulate Organic Carbon in the benthos"
+				/>
+				<var name="pocbBenthos" array_group="benthosGRP" units="mmol C kg^{-1}"
+					description="Semi-Labile Particulate Organic Carbon in the benthos"
+				/>
+				<var name="poccBenthos" array_group="benthosGRP" units="mmol C kg^{-1}"
+					description="Refractory Particulate Organic Carbon in the benthos"
+				/>
+				<var name="ponaBenthos" array_group="benthosGRP" units="mmol N kg^{-1}"
+					description="Labile Particulate Organic Nitrogen in the benthos"
+				/>
+				<var name="ponbBenthos" array_group="benthosGRP" units="mmol N kg^{-1}"
+					description="Semi-Labile Particulate Organic Nitrogen in the benthos"
+				/>
+				<var name="poncBenthos" array_group="benthosGRP" units="mmol N kg^{-1}"
+					description="Refractory Particulate Organic Nitrogen in the benthos"
+				/>
+				<var name="popaBenthos" array_group="benthosGRP" units="mmol P kg^{-1}"
+					description="Labile Particulate Organic Phosphorus in the benthos"
+				/>
+				<var name="popbBenthos" array_group="benthosGRP" units="mmol P kg^{-1}"
+					description="Semi-Labile Particulate Organic Phosphorus in the benthos"
+				/>
+				<var name="popcBenthos" array_group="benthosGRP" units="mmol P kg^{-1}"
+					description="Refractory Particulate Organic Phosphorus in the benthos"
+				/>
+				<var name="o2Benthos" array_group="benthosGRP" units="mmol O2 m^{-3}"
+					description="Dissolved Oxygen in the benthos"
+				/>
+				<var name="nh4Benthos" array_group="benthosGRP" units="mmol N m^{-3}"
+					description="Dissolved ammonium in the benthos"
+				/>
+				<var name="h2po4Benthos" array_group="benthosGRP" units="mmol P m^{-3}"
+					description="Dissolved phosphate in the benthos"
+				/>
+				<var name="co2Benthos" array_group="benthosGRP" units="mmol C m^{-3}"
+					description="Dissolved carbon dioxide in the benthos"
+				/>
+				<var name="no3Benthos" array_group="benthosGRP" units="mmol N m^{-3}"
+					description="Dissolved nitrate in the benthos"
+				/>
+				<var name="mno2aBenthos" array_group="benthosGRP" units="mmol Mn kg^{-1}"
+					description="Particulate amorphous manganese oxyhydroxide in the benthos"
+				/>
+				<var name="mno2bBenthos" array_group="benthosGRP" units="mmol Mn kg^{-1}"
+					description="Particulate crystalline manganese oxyhydroxide in the benthos"
+				/>
+				<var name="mnBenthos" array_group="benthosGRP" units="meq m^{-3}"
+					description="Dissolved manganese in the benthos"
+				/>
+				<var name="feoh3aBenthos" array_group="benthosGRP" units="mmol Fe kg^{-1}"
+					description="Particulate amorphous iron oxyhydroxide in the benthos"
+				/>
+				<var name="feoh3bBenthos" array_group="benthosGRP" units="mmol Fe kg^{-1}"
+					description="Particulate crystalline iron oxyhydroxide in the benthos"
+				/>
+				<var name="feBenthos" array_group="benthosGRP" units="mmol Fe m^{-3}"
+					description="Dissolved Iron in the benthos"
+				/>
+				<var name="fepaBenthos" array_group="benthosGRP" units="mmol P kg^{-1}"
+					description="Particulate amorphous iron-bound phosphorus in the benthos"
+				/>
+				<var name="fepbBenthos" array_group="benthosGRP" units="mmol P kg^{-1}"
+					description="Particulate crystalline iron-bound phosphorus in the benthos"
+				/>
+				<var name="so4Benthos" array_group="benthosGRP" units="mmol S m^{-3}"
+					description="Dissolved sulfate in the benthos"
+				/>
+				<var name="h2sBenthos" array_group="benthosGRP" units="mmol S m^{-3}"
+					description="Dissolved hydrogen sulfide in the benthos"
+				/>
+				<var name="ch4Benthos" array_group="benthosGRP" units="mg C m^{-3}"
+					description="Dissolved methane in the benthos"
+				/>
+				<var name="hco3Benthos" array_group="benthosGRP" units="mmol C m^{-3}"
+					description="Dissolved bicarbonate in the benthos"
+				/>
+				<var name="fesBenthos" array_group="benthosGRP" units="mmol kg m^{-1}"
+					description="Particulate iron sulfide in the benthos"
+				/>
+				<var name="fes2Benthos" array_group="benthosGRP" units="mmol kg m^{-1}"
+					description="Particulate pyrite in the benthos"
+				/>
+				<var name="sBenthos" array_group="benthosGRP" units="mmol S kg^{-1}"
+					description="Particulate elemental sulfur in the benthos"
+				/>
+				<var name="caco3aBenthos" array_group="benthosGRP" units="mmol C kg^{-1}"
+					description="Particulate calcite in the benthos"
+				/>
+				<var name="caco3bBenthos" array_group="benthosGRP" units="mmol C kg^{-1}"
+					description="Particulate aragonite in the benthos"
+				/>
+				<var name="co3Benthos" array_group="benthosGRP" units="mmol C m^{-3}"
+					description="Dissolved carbonate in the benthos"
+				/>
+				<var name="camgco3Benthos" array_group="benthosGRP" units="mg C kg^{-1}"
+					description="Particlate 15% magnesium calcite in the benthos"
+				/>
+				<var name="dicBenthos" array_group="benthosGRP" units="mmol C m^{-3}"
+					description="Dissolved inorganic Carbon in the benthos"
+				/>
+				<var name="alkBenthos" array_group="benthosGRP" units="meq m^{-3}"
+					description="Dissolved total alkalinity in the benthos"
+				/>
+			</var_array>
+			<var name="benthosPhPrev3d" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units="kg m^{-2} m s^{-1}"
+				description="River Runoff Flux of Sediment"
+			/>
+		</var_struct>
+		<var_struct name="seafloorStorage" time_levs="1">
+			<var_array name="benthosTracersStorage" type="real" dimensions="nCells Time" packages="benthosTracersPKG">
+				<!-- Add constituents of tracer group -->
+				<var name="pocaBenthosStorage" array_group="benthosGRP" units="mmol C kg^{-1} m"
+					description="Labile Particulate Organic Carbon deep storage"
+				/>
+				<var name="pocbBenthosStorage" array_group="benthosGRP" units="mmol C kg^{-1} m"
+					description="Semi-Labile Particulate Organic Carbon deep storage"
+				/>
+				<var name="poccBenthosStorage" array_group="benthosGRP" units="mmol C kg^{-1} m"
+					description="Refractory Particulate Organic Carbon deep storage"
+				/>
+				<var name="ponaBenthosStorage" array_group="benthosGRP" units="mmol N kg^{-1} m"
+					description="Labile Particulate Organic Nitrogen deep storage"
+				/>
+				<var name="ponbBenthosStorage" array_group="benthosGRP" units="mmol N kg^{-1} m"
+					description="Semi-Labile Particulate Organic Nitrogen deep storage"
+				/>
+				<var name="poncBenthosStorage" array_group="benthosGRP" units="mmol N kg^{-1} m"
+					description="Refractory Particulate Organic Nitrogen deep storage"
+				/>
+				<var name="popaBenthosStorage" array_group="benthosGRP" units="mmol P kg^{-1} m"
+					description="Labile Particulate Organic Phosphorus deep storage"
+				/>
+				<var name="popbBenthosStorage" array_group="benthosGRP" units="mmol P kg^{-1} m"
+					description="Semi-Labile Particulate Organic Phosphorus deep storage"
+				/>
+				<var name="popcBenthosStorage" array_group="benthosGRP" units="mmol P kg^{-1} m"
+					description="Refractory Particulate Organic Phosphorus deep storage"
+				/>
+				<var name="o2BenthosStorage" array_group="benthosGRP" units="mmol O2 m^{-3} m"
+					description="Dissolved Oxygen deep storage"
+				/>
+				<var name="nh4BenthosStorage" array_group="benthosGRP" units="mmol N m^{-3} m"
+					description="Dissolved ammonium deep storage"
+				/>
+				<var name="h2po4BenthosStorage" array_group="benthosGRP" units="mmol P m^{-3} m"
+					description="Dissolved phosphate deep storage"
+				/>
+				<var name="co2BenthosStorage" array_group="benthosGRP" units="mmol C m^{-3} m"
+					description="Dissolved carbon dioxide deep storage"
+				/>
+				<var name="no3BenthosStorage" array_group="benthosGRP" units="mmol N m^{-3} m"
+					description="Dissolved nitrate deep storage"
+				/>
+				<var name="mno2aBenthosStorage" array_group="benthosGRP" units="mmol Mn kg^{-1} m"
+					description="Particulate amorphous manganese oxyhydroxide deep storage"
+				/>
+				<var name="mno2bBenthosStorage" array_group="benthosGRP" units="mmol Mn kg^{-1} m"
+					description="Particulate crystalline manganese oxyhydroxide deep storage"
+				/>
+				<var name="mnBenthosStorage" array_group="benthosGRP" units="meq m^{-3} m"
+					description="Dissolved manganese deep storage"
+				/>
+				<var name="feoh3aBenthosStorage" array_group="benthosGRP" units="mmol Fe kg^{-1} m"
+					description="Particulate amorphous iron oxyhydroxide deep storage"
+				/>
+				<var name="feoh3bBenthosStorage" array_group="benthosGRP" units="mmol Fe kg^{-1} m"
+					description="Particulate crystalline iron oxyhydroxide deep storage"
+				/>
+				<var name="feBenthosStorage" array_group="benthosGRP" units="mmol Fe m^{-3} m"
+					description="Dissolved Iron deep storage"
+				/>
+				<var name="fepaBenthosStorage" array_group="benthosGRP" units="mmol P kg^{-1} m"
+					description="Particulate amorphous iron-bound phosphorus deep storage"
+				/>
+				<var name="fepbBenthosStorage" array_group="benthosGRP" units="mmol P kg^{-1} m"
+					description="Particulate crystalline iron-bound phosphorus deep storage"
+				/>
+				<var name="so4BenthosStorage" array_group="benthosGRP" units="mmol S m^{-3} m"
+					description="Dissolved sulfate deep storage"
+				/>
+				<var name="h2sBenthosStorage" array_group="benthosGRP" units="mmol S m^{-3} m"
+					description="Dissolved hydrogen sulfide deep storage"
+				/>
+				<var name="ch4BenthosStorage" array_group="benthosGRP" units="mg C m^{-3} m"
+					description="Dissolved methane deep storage"
+				/>
+				<var name="hco3BenthosStorage" array_group="benthosGRP" units="mmol C m^{-3} m"
+					description="Dissolved bicarbonate deep storage"
+				/>
+				<var name="fesBenthosStorage" array_group="benthosGRP" units="mmol kg m^{-1} m"
+					description="Particulate iron sulfide deep storage"
+				/>
+				<var name="fes2BenthosStorage" array_group="benthosGRP" units="mmol kg m^{-1} m"
+					description="Particulate pyrite deep storage"
+				/>
+				<var name="sBenthosStorage" array_group="benthosGRP" units="mmol S kg^{-1} m"
+					description="Particulate elemental sulfur deep storage"
+				/>
+				<var name="caco3aBenthosStorage" array_group="benthosGRP" units="mmol C kg^{-1} m"
+					description="Particulate calcite deep storage"
+				/>
+				<var name="caco3bBenthosStorage" array_group="benthosGRP" units="mmol C kg^{-1} m"
+					description="Particulate aragonite deep storage"
+				/>
+				<var name="co3BenthosStorage" array_group="benthosGRP" units="mmol C m^{-3} m"
+					description="Dissolved carbonate deep storage"
+				/>
+				<var name="camgco3BenthosStorage" array_group="benthosGRP" units="mg C kg^{-1} m"
+					description="Particlate 15% magnesium calcite deep storage"
+				/>
+				<var name="dicBenthosStorage" array_group="benthosGRP" units="mmol C m^{-3} m"
+					description="Dissolved inorganic Carbon deep storage"
+				/>
+				<var name="alkBenthosStorage" array_group="benthosGRP" units="meq m^{-3} m"
+					description="Dissolved total alkalinity deep storage"
+				/>
+			</var_array>
+		</var_struct>
+		<var_struct name="oceanBenthosFlux" time_levs="1">
+			<var_array name="benthosTracersSurfaceFlux" type="real" dimensions="nCells Time" packages="benthosTracersPKG">
+				<!-- Add constituents of tracer group -->
+				<var name="PO4SurfaceFlux" array_group="benthosSurfaceFluxGRP" units="mmol P m^{-3} m s^{-1}"
+					description="Dissolved Inorganic Phosphate Surface Flux"
+				/>
+			</var_array>
+			<var_array name="benthosTracersSurfaceFluxRunoff" type="real" dimensions="nCells Time" packages="benthosTracersPKG">
+				<!-- Add constituents of tracer group -->
+				<var name="PO4SurfaceFluxRunoff" array_group="benthosSurfaceFluxRunoffGRP" units="mmol P m^{-3} m s^{-1}"
+					description="Dissolved Inorganic Phosphate Surface Flux Due to Runoff"
+				/>
+			</var_array>
+		</var_struct>
+		<var_struct name="benthosAuxiliary" time_levs="1"
+			    packages="benthosTracersPKG">
+			<var name="riverFluxSed" type="real" dimensions="nCells Time" units="kg m^{-2} m s^{-1}"
+				description="River Runoff Flux of Sediment"
+			/>
+			<var name="riverFluxPOC" type="real" dimensions="nCells Time" units="mmol C kg^{-1} m s^{-1}"
+				description="River Runoff Flux of Sediment"
+			/>
+		</var_struct>
+		<var_struct name="benthosSeaIceCoupling" time_levs="1" packages="benthosTracersPKG">
+			<var name="avgBenthosSurfaceDIC" type="real" dimensions="nCells Time" units="mmol C m^{-3}"
+				description="Benthos Surface DIC concentration"
+			/>
+			<var name="avgBenthosSurfaceNO3" type="real" dimensions="nCells Time" units="mmol N m^{-3}"
+				description="Benthos Surface NO3 concentration"
+			/>
+			<var name="avgBenthosSurfaceFeParticulate" type="real" dimensions="nCells Time" units="mmol Fe m^{-3}"
+				description="Benthos Surface particulate Fe concentration (set to zero)"
+			/>
+			<var name="avgBenthosSurfaceFeDissolved" type="real" dimensions="nCells Time" units="mmol Fe m^{-3}"
+				description="Benthos Surface dissolved bioavailable Fe concentration"
+			/>
+			<var name="iceBenthosFluxDIC" type="real" dimensions="nCells Time" units="mmol C m^{-2} s"
+				description="Surface DIC flux from sea ice"
+			/>
+			<var name="iceBenthosFluxFeParticulate" type="real" dimensions="nCells Time" units="mmol Fe m^{-2} s"
+				description="Surface particulate Fe flux from sea ice (set to zero)"
+			/>
+			<var name="iceBenthosFluxFeDissolved" type="real" dimensions="nCells Time" units="mmol Fe m^{-2} s"
+				description="Surface dissolved bioavailable Fe flux from sea ice"
+			/>
+		</var_struct>
+	</var_struct>
+
+	<var_struct name="tend" time_levs="1">
+		<var_struct name="seafloorTend" time_levs="1">
+			<var_array name="benthosTracersTend" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" packages="benthosTracersPKG">
+				<!-- Add constituents of tracer group -->
+				<var name="pocaBenthosTend" array_group="benthosGRP" units="mmol C kg^{-1} s^{-1}"
+					description="Labile Particulate Organic Carbon tendency in the benthos"
+				/>
+				<var name="pocbBenthosTend" array_group="benthosGRP" units="mmol C kg^{-1} s^{-1}"
+					description="Semi-Labile Particulate Organic Carbon tendency in the benthos"
+				/>
+				<var name="poccBenthosTend" array_group="benthosGRP" units="mmol C kg^{-1} s^{-1}"
+					description="Refractory Particulate Organic Carbon tendency in the benthos"
+				/>
+				<var name="ponaBenthosTend" array_group="benthosGRP" units="mmol N kg^{-1} s^{-1}"
+					description="Labile Particulate Organic Nitrogen tendency in the benthos"
+				/>
+				<var name="ponbBenthosTend" array_group="benthosGRP" units="mmol N kg^{-1} s^{-1}"
+					description="Semi-Labile Particulate Organic Nitrogen tendency in the benthos"
+				/>
+				<var name="poncBenthosTend" array_group="benthosGRP" units="mmol N kg^{-1} s^{-1}"
+					description="Refractory Particulate Organic Nitrogen tendency in the benthos"
+				/>
+				<var name="popaBenthosTend" array_group="benthosGRP" units="mmol P kg^{-1} s^{-1}"
+					description="Labile Particulate Organic Phosphorus tendency in the benthos"
+				/>
+				<var name="popbBenthosTend" array_group="benthosGRP" units="mmol P kg^{-1} s^{-1}"
+					description="Semi-Labile Particulate Organic Phosphorus tendency in the benthos"
+				/>
+				<var name="popcBenthosTend" array_group="benthosGRP" units="mmol P kg^{-1} s^{-1}"
+					description="Refractory Particulate Organic Phosphorus tendency in the benthos"
+				/>
+				<var name="o2BenthosTend" array_group="benthosGRP" units="mmol O2 m^{-3} s^{-1}"
+					description="Dissolved Oxygen tendency in the benthos"
+				/>
+				<var name="nh4BenthosTend" array_group="benthosGRP" units="mmol N m^{-3} s^{-1}"
+					description="Dissolved ammonium tendency in the benthos"
+				/>
+				<var name="h2po4BenthosTend" array_group="benthosGRP" units="mmol P m^{-3} s^{-1}"
+					description="Dissolved phosphate tendency in the benthos"
+				/>
+				<var name="co2BenthosTend" array_group="benthosGRP" units="mmol C m^{-3} s^{-1}"
+					description="Dissolved carbon dioxide tendency in the benthos"
+				/>
+				<var name="no3BenthosTend" array_group="benthosGRP" units="mmol N m^{-3} s^{-1}"
+					description="Dissolved nitrate tendency in the benthos"
+				/>
+				<var name="mno2aBenthosTend" array_group="benthosGRP" units="mmol Mn kg^{-1} s^{-1}"
+					description="Particulate amorphous manganese oxyhydroxide tendency in the benthos"
+				/>
+				<var name="mno2bBenthosTend" array_group="benthosGRP" units="mmol Mn kg^{-1} s^{-1}"
+					description="Particulate crystalline manganese oxyhydroxide tendency in the benthos"
+				/>
+				<var name="mnBenthosTend" array_group="benthosGRP" units="meq m^{-3} s^{-1}"
+					description="Dissolved manganese tendency in the benthos"
+				/>
+				<var name="feoh3aBenthosTend" array_group="benthosGRP" units="mmol Fe kg^{-1} s^{-1}"
+					description="Particulate amorphous iron oxyhydroxide tendency in the benthos"
+				/>
+				<var name="feoh3bBenthosTend" array_group="benthosGRP" units="mmol Fe kg^{-1} s^{-1}"
+					description="Particulate crystalline iron oxyhydroxide tendency in the benthos"
+				/>
+				<var name="feBenthosTend" array_group="benthosGRP" units="mmol Fe m^{-3} s^{-1}"
+					description="Dissolved Iron tendency in the benthos"
+				/>
+				<var name="fepaBenthosTend" array_group="benthosGRP" units="mmol P kg^{-1} s^{-1}"
+					description="Particulate amorphous iron-bound phosphorus tendency in the benthos"
+				/>
+				<var name="fepbBenthosTend" array_group="benthosGRP" units="mmol P kg^{-1} s^{-1}"
+					description="Particulate crystalline iron-bound phosphorus tendency in the benthos"
+				/>
+				<var name="so4BenthosTend" array_group="benthosGRP" units="mmol S m^{-3} s^{-1}"
+					description="Dissolved sulfate tendency in the benthos"
+				/>
+				<var name="h2sBenthosTend" array_group="benthosGRP" units="mmol S m^{-3} s^{-1}"
+					description="Dissolved hydrogen sulfide tendency in the benthos"
+				/>
+				<var name="ch4BenthosTend" array_group="benthosGRP" units="mg C m^{-3} s^{-1}"
+					description="Dissolved methane tendency in the benthos"
+				/>
+				<var name="hco3BenthosTend" array_group="benthosGRP" units="mmol C m^{-3} s^{-1}"
+					description="Dissolved bicarbonate tendency in the benthos"
+				/>
+				<var name="fesBenthosTend" array_group="benthosGRP" units="mmol kg m^{-1} s^{-1}"
+					description="Particulate iron sulfide tendency in the benthos"
+				/>
+				<var name="fes2BenthosTend" array_group="benthosGRP" units="mmol kg m^{-1} s^{-1}"
+					description="Particulate pyrite tendency in the benthos"
+				/>
+				<var name="sBenthosTend" array_group="benthosGRP" units="mmol S kg^{-1} s^{-1}"
+					description="Particulate elemental sulfur tendency in the benthos"
+				/>
+				<var name="caco3aBenthosTend" array_group="benthosGRP" units="mmol C kg^{-1} s^{-1}"
+					description="Particulate calcite tendency in the benthos"
+				/>
+				<var name="caco3bBenthosTend" array_group="benthosGRP" units="mmol C kg^{-1} s^{-1}"
+					description="Particulate aragonite tendency in the benthos"
+				/>
+				<var name="co3BenthosTend" array_group="benthosGRP" units="mmol C m^{-3} s^{-1}"
+					description="Dissolved carbonate tendency in the benthos"
+				/>
+				<var name="camgco3BenthosTend" array_group="benthosGRP" units="mg C kg^{-1} s^{-1}"
+					description="Particlate 15% magnesium calcite tendency in the benthos"
+				/>
+				<var name="dicBenthosTend" array_group="benthosGRP" units="mmol C m^{-3} s^{-1}"
+					description="Dissolved inorganic Carbon tendency in the benthos"
+				/>
+				<var name="alkBenthosTend" array_group="benthosGRP" units="meq m^{-3} s^{-1}"
+					description="Dissolved total alkalinity tendency in the benthos"
+				/>
+			</var_array>
+		</var_struct>
+	</var_struct>
+	<var_struct name="diagnostics" time_levs="1">
+		<var_struct name="benthosDiagFieldsLevel1" time_levs="1" packages="benthosTracersPKG">
+			<var_array name="netBenthosReactionTend" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="pocaNetReactionTend" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Carbon net reaction tendency"
+				/>
+				<var name="pocbNetReactionTend" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Carbon net reaction tendency"
+				/>
+				<var name="poccNetReactionTend" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Carbon net reaction tendency"
+				/>
+				<var name="ponaNetReactionTend" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Nitrogen net reaction tendency"
+				/>
+				<var name="ponbNetReactionTend" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Nitrogen net reaction tendency"
+				/>
+				<var name="poncNetReactionTend" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Nitrogen net reaction tendency"
+				/>
+				<var name="popaNetReactionTend" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Phosphorus net reaction tendency"
+				/>
+				<var name="popbNetReactionTend" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Phosphorus net reaction tendency"
+				/>
+				<var name="popcNetReactionTend" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Phosphorus net reaction tendency"
+				/>
+				<var name="o2NetReactionTend" array_group="benthosGRP" units="mmol O2 m^{-3} m s^{-1}"
+					description="Dissolved Oxygen net reaction tendency"
+				/>
+				<var name="nh4NetReactionTend" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved ammonium net reaction tendency"
+				/>
+				<var name="h2po4NetReactionTend" array_group="benthosGRP" units="mmol P m^{-3} m s^{-1}"
+					description="Dissolved phosphate net reaction tendency"
+				/>
+				<var name="co2NetReactionTend" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbon dioxide net reaction tendency"
+				/>
+				<var name="no3NetReactionTend" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved nitrate net reaction tendency"
+				/>
+				<var name="mno2aNetReactionTend" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate amorphous manganese oxyhydroxide net reaction tendency"
+				/>
+				<var name="mno2bNetReactionTend" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate crystalline manganese oxyhydroxide net reaction tendency"
+				/>
+				<var name="mnNetReactionTend" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved manganese net reaction tendency"
+				/>
+				<var name="feoh3aNetReactionTend" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron oxyhydroxide net reaction tendency"
+				/>
+				<var name="feoh3bNetReactionTend" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron oxyhydroxide net reaction tendency"
+				/>
+				<var name="feNetReactionTend" array_group="benthosGRP" units="mmol Fe m^{-3} m s^{-1}"
+					description="Dissolved Iron net reaction tendency"
+				/>
+				<var name="fepaNetReactionTend" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron-bound phosphorus net reaction tendency"
+				/>
+				<var name="fepbNetReactionTend" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron-bound phosphorus net reaction tendency"
+				/>
+				<var name="so4NetReactionTend" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved sulfate net reaction tendency"
+				/>
+				<var name="h2sNetReactionTend" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved hydrogen sulfide net reaction tendency"
+				/>
+				<var name="ch4NetReactionTend" array_group="benthosGRP" units="mg C m^{-3} m s^{-1}"
+					description="Dissolved methane net reaction tendency"
+				/>
+				<var name="hco3NetReactionTend" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved bicarbonate net reaction tendency"
+				/>
+				<var name="fesNetReactionTend" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate iron sulfide net reaction tendency"
+				/>
+				<var name="fes2NetReactionTend" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate pyrite net reaction tendency"
+				/>
+				<var name="sNetReactionTend" array_group="benthosGRP" units="mmol S kg^{-1} m s^{-1}"
+					description="Particulate elemental sulfur net reaction tendency"
+				/>
+				<var name="caco3aNetReactionTend" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate calcite net reaction tendency"
+				/>
+				<var name="caco3bNetReactionTend" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate aragonite net reaction tendency"
+				/>
+				<var name="co3NetReactionTend" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbonate net reaction tendency"
+				/>
+				<var name="camgco3NetReactionTend" array_group="benthosGRP" units="mg C kg^{-1} m s^{-1}"
+					description="Particlate 15% magnesium calcite net reaction tendency"
+				/>
+				<var name="dicNetReactionTend" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved inorganic Carbon net reaction tendency"
+				/>
+				<var name="alkNetReactionTend" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved total alkalinity net reaction tendency"
+				/>
+			</var_array>
+			<var_array name="netBenthosTransportTend" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="pocaNetTransportTend" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Carbon net transport tendency"
+				/>
+				<var name="pocbNetTransportTend" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Carbon net transport tendency"
+				/>
+				<var name="poccNetTransportTend" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Carbon net transport tendency"
+				/>
+				<var name="ponaNetTransportTend" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Nitrogen net transport tendency"
+				/>
+				<var name="ponbNetTransportTend" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Nitrogen net transport tendency"
+				/>
+				<var name="poncNetTransportTend" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Nitrogen net transport tendency"
+				/>
+				<var name="popaNetTransportTend" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Phosphorus net transport tendency"
+				/>
+				<var name="popbNetTransportTend" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Phosphorus net transport tendency"
+				/>
+				<var name="popcNetTransportTend" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Phosphorus net transport tendency"
+				/>
+				<var name="o2NetTransportTend" array_group="benthosGRP" units="mmol O2 m^{-3} m s^{-1}"
+					description="Dissolved Oxygen net transport tendency"
+				/>
+				<var name="nh4NetTransportTend" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved ammonium net transport tendency"
+				/>
+				<var name="h2po4NetTransportTend" array_group="benthosGRP" units="mmol P m^{-3} m s^{-1}"
+					description="Dissolved phosphate net transport tendency"
+				/>
+				<var name="co2NetTransportTend" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbon dioxide net transport tendency"
+				/>
+				<var name="no3NetTransportTend" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved nitrate net transport tendency"
+				/>
+				<var name="mno2aNetTransportTend" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate amorphous manganese oxyhydroxide net transport tendency"
+				/>
+				<var name="mno2bNetTransportTend" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate crystalline manganese oxyhydroxide net transport tendency"
+				/>
+				<var name="mnNetTransportTend" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved manganese net transport tendency"
+				/>
+				<var name="feoh3aNetTransportTend" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron oxyhydroxide net transport tendency"
+				/>
+				<var name="feoh3bNetTransportTend" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron oxyhydroxide net transport tendency"
+				/>
+				<var name="feNetTransportTend" array_group="benthosGRP" units="mmol Fe m^{-3} m s^{-1}"
+					description="Dissolved Iron net transport tendency"
+				/>
+				<var name="fepaNetTransportTend" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron-bound phosphorus net transport tendency"
+				/>
+				<var name="fepbNetTransportTend" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron-bound phosphorus net transport tendency"
+				/>
+				<var name="so4NetTransportTend" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved sulfate net transport tendency"
+				/>
+				<var name="h2sNetTransportTend" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved hydrogen sulfide net transport tendency"
+				/>
+				<var name="ch4NetTransportTend" array_group="benthosGRP" units="mg C m^{-3} m s^{-1}"
+					description="Dissolved methane net transport tendency"
+				/>
+				<var name="hco3NetTransportTend" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved bicarbonate net transport tendency"
+				/>
+				<var name="fesNetTransportTend" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate iron sulfide net transport tendency"
+				/>
+				<var name="fes2NetTransportTend" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate pyrite net transport tendency"
+				/>
+				<var name="sNetTransportTend" array_group="benthosGRP" units="mmol S kg^{-1} m s^{-1}"
+					description="Particulate elemental sulfur net transport tendency"
+				/>
+				<var name="caco3aNetTransportTend" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate calcite net transport tendency"
+				/>
+				<var name="caco3bNetTransportTend" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate aragonite net transport tendency"
+				/>
+				<var name="co3NetTransportTend" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbonate net transport tendency"
+				/>
+				<var name="camgco3NetTransportTend" array_group="benthosGRP" units="mg C kg^{-1} m s^{-1}"
+					description="Particlate 15% magnesium calcite net transport tendency"
+				/>
+				<var name="dicNetTransportTend" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved inorganic Carbon net transport tendency"
+				/>
+				<var name="alkNetTransportTend" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved total alkalinity net transport tendency"
+				/>
+			</var_array>
+			<var_array name="netBenthosTend" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="pocaNetTend" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Carbon net tendency"
+				/>
+				<var name="pocbNetTend" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Carbon net tendency"
+				/>
+				<var name="poccNetTend" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Carbon net tendency"
+				/>
+				<var name="ponaNetTend" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Nitrogen net tendency"
+				/>
+				<var name="ponbNetTend" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Nitrogen net tendency"
+				/>
+				<var name="poncNetTend" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Nitrogen net tendency"
+				/>
+				<var name="popaNetTend" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Phosphorus net tendency"
+				/>
+				<var name="popbNetTend" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Phosphorus net tendency"
+				/>
+				<var name="popcNetTend" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Phosphorus net tendency"
+				/>
+				<var name="o2NetTend" array_group="benthosGRP" units="mmol O2 m^{-3} m s^{-1}"
+					description="Dissolved Oxygen net tendency"
+				/>
+				<var name="nh4NetTend" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved ammonium net tendency"
+				/>
+				<var name="h2po4NetTend" array_group="benthosGRP" units="mmol P m^{-3} m s^{-1}"
+					description="Dissolved phosphate net tendency"
+				/>
+				<var name="co2NetTend" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbon dioxide net tendency"
+				/>
+				<var name="no3NetTend" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved nitrate net tendency"
+				/>
+				<var name="mno2aNetTend" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate amorphous manganese oxyhydroxide net tendency"
+				/>
+				<var name="mno2bNetTend" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate crystalline manganese oxyhydroxide net tendency"
+				/>
+				<var name="mnNetTend" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved manganese net tendency"
+				/>
+				<var name="feoh3aNetTend" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron oxyhydroxide net tendency"
+				/>
+				<var name="feoh3bNetTend" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron oxyhydroxide net tendency"
+				/>
+				<var name="feNetTend" array_group="benthosGRP" units="mmol Fe m^{-3} m s^{-1}"
+					description="Dissolved Iron net tendency"
+				/>
+				<var name="fepaNetTend" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron-bound phosphorus net tendency"
+				/>
+				<var name="fepbNetTend" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron-bound phosphorus net tendency"
+				/>
+				<var name="so4NetTend" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved sulfate net tendency"
+				/>
+				<var name="h2sNetTend" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved hydrogen sulfide net tendency"
+				/>
+				<var name="ch4NetTend" array_group="benthosGRP" units="mg C m^{-3} m s^{-1}"
+					description="Dissolved methane net tendency"
+				/>
+				<var name="hco3NetTend" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved bicarbonate net tendency"
+				/>
+				<var name="fesNetTend" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate iron sulfide net tendency"
+				/>
+				<var name="fes2NetTend" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate pyrite net tendency"
+				/>
+				<var name="sNetTend" array_group="benthosGRP" units="mmol S kg^{-1} m s^{-1}"
+					description="Particulate elemental sulfur net tendency"
+				/>
+				<var name="caco3aNetTend" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate calcite net tendency"
+				/>
+				<var name="caco3bNetTend" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate aragonite net tendency"
+				/>
+				<var name="co3NetTend" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbonate net tendency"
+				/>
+				<var name="camgco3NetTend" array_group="benthosGRP" units="mg C kg^{-1} m s^{-1}"
+					description="Particlate 15% magnesium calcite net tendency"
+				/>
+				<var name="dicNetTend" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved inorganic Carbon net tendency"
+				/>
+				<var name="alkNetTend" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved total alkalinity net tendency"
+				/>
+			</var_array>
+			<var_array name="primarySourceTend" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="pocaPrimarySource" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Carbon source due to primary reactions"
+				/>
+				<var name="pocbPrimarySource" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Carbon source due to primary reactions"
+				/>
+				<var name="poccPrimarySource" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Carbon source due to primary reactions"
+				/>
+				<var name="ponaPrimarySource" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Nitrogen source due to primary reactions"
+				/>
+				<var name="ponbPrimarySource" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Nitrogen source due to primary reactions"
+				/>
+				<var name="poncPrimarySource" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Nitrogen source due to primary reactions"
+				/>
+				<var name="popaPrimarySource" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Phosphorus source due to primary reactions"
+				/>
+				<var name="popbPrimarySource" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Phosphorus source due to primary reactions"
+				/>
+				<var name="popcPrimarySource" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Phosphorus source due to primary reactions"
+				/>
+				<var name="o2PrimarySource" array_group="benthosGRP" units="mmol O2 m^{-3} m s^{-1}"
+					description="Dissolved Oxygen source due to primary reactions"
+				/>
+				<var name="nh4PrimarySource" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved ammonium source due to primary reactions"
+				/>
+				<var name="h2po4PrimarySource" array_group="benthosGRP" units="mmol P m^{-3} m s^{-1}"
+					description="Dissolved phosphate source due to primary reactions"
+				/>
+				<var name="co2PrimarySource" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbon dioxide source due to primary reactions"
+				/>
+				<var name="no3PrimarySource" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved nitrate source due to primary reactions"
+				/>
+				<var name="mno2aPrimarySource" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate amorphous manganese oxyhydroxide source due to primary reactions"
+				/>
+				<var name="mno2bPrimarySource" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate crystalline manganese oxyhydroxide source due to primary reactions"
+				/>
+				<var name="mnPrimarySource" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved manganese source due to primary reactions"
+				/>
+				<var name="feoh3aPrimarySource" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron oxyhydroxide source due to primary reactions"
+				/>
+				<var name="feoh3bPrimarySource" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron oxyhydroxide source due to primary reactions"
+				/>
+				<var name="fePrimarySource" array_group="benthosGRP" units="mmol Fe m^{-3} m s^{-1}"
+					description="Dissolved Iron source due to primary reactions"
+				/>
+				<var name="fepaPrimarySource" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron-bound phosphorus source due to primary reactions"
+				/>
+				<var name="fepbPrimarySource" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron-bound phosphorus source due to primary reactions"
+				/>
+				<var name="so4PrimarySource" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved sulfate source due to primary reactions"
+				/>
+				<var name="h2sPrimarySource" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved hydrogen sulfide source due to primary reactions"
+				/>
+				<var name="ch4PrimarySource" array_group="benthosGRP" units="mg C m^{-3} m s^{-1}"
+					description="Dissolved methane source due to primary reactions"
+				/>
+				<var name="hco3PrimarySource" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved bicarbonate source due to primary reactions"
+				/>
+				<var name="fesPrimarySource" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate iron sulfide source due to primary reactions"
+				/>
+				<var name="fes2PrimarySource" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate pyrite source due to primary reactions"
+				/>
+				<var name="sPrimarySource" array_group="benthosGRP" units="mmol S kg^{-1} m s^{-1}"
+					description="Particulate elemental sulfur source due to primary reactions"
+				/>
+				<var name="caco3aPrimarySource" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate calcite source due to primary reactions"
+				/>
+				<var name="caco3bPrimarySource" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate aragonite source due to primary reactions"
+				/>
+				<var name="co3PrimarySource" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbonate source due to primary reactions"
+				/>
+				<var name="camgco3PrimarySource" array_group="benthosGRP" units="mg C kg^{-1} m s^{-1}"
+					description="Particlate 15% magnesium calcite source due to primary reactions"
+				/>
+				<var name="dicPrimarySource" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved inorganic Carbon source due to primary reactions"
+				/>
+				<var name="alkPrimarySource" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved total alkalinity source due to primary reactions"
+				/>
+			</var_array>
+			<var_array name="primarySinkTend" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="pocaPrimarySink" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Carbon sink due to primary reactions"
+				/>
+				<var name="pocbPrimarySink" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Carbon sink due to primary reactions"
+				/>
+				<var name="poccPrimarySink" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Carbon sink due to primary reactions"
+				/>
+				<var name="ponaPrimarySink" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Nitrogen sink due to primary reactions"
+				/>
+				<var name="ponbPrimarySink" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Nitrogen sink due to primary reactions"
+				/>
+				<var name="poncPrimarySink" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Nitrogen sink due to primary reactions"
+				/>
+				<var name="popaPrimarySink" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Phosphorus sink due to primary reactions"
+				/>
+				<var name="popbPrimarySink" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Phosphorus sink due to primary reactions"
+				/>
+				<var name="popcPrimarySink" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Phosphorus sink due to primary reactions"
+				/>
+				<var name="o2PrimarySink" array_group="benthosGRP" units="mmol O2 m^{-3} m s^{-1}"
+					description="Dissolved Oxygen sink due to primary reactions"
+				/>
+				<var name="nh4PrimarySink" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved ammonium sink due to primary reactions"
+				/>
+				<var name="h2po4PrimarySink" array_group="benthosGRP" units="mmol P m^{-3} m s^{-1}"
+					description="Dissolved phosphate sink due to primary reactions"
+				/>
+				<var name="co2PrimarySink" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbon dioxide sink due to primary reactions"
+				/>
+				<var name="no3PrimarySink" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved nitrate sink due to primary reactions"
+				/>
+				<var name="mno2aPrimarySink" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate amorphous manganese oxyhydroxide sink due to primary reactions"
+				/>
+				<var name="mno2bPrimarySink" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate crystalline manganese oxyhydroxide sink due to primary reactions"
+				/>
+				<var name="mnPrimarySink" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved manganese sink due to primary reactions"
+				/>
+				<var name="feoh3aPrimarySink" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron oxyhydroxide sink due to primary reactions"
+				/>
+				<var name="feoh3bPrimarySink" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron oxyhydroxide sink due to primary reactions"
+				/>
+				<var name="fePrimarySink" array_group="benthosGRP" units="mmol Fe m^{-3} m s^{-1}"
+					description="Dissolved Iron sink due to primary reactions"
+				/>
+				<var name="fepaPrimarySink" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron-bound phosphorus sink due to primary reactions"
+				/>
+				<var name="fepbPrimarySink" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron-bound phosphorus sink due to primary reactions"
+				/>
+				<var name="so4PrimarySink" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved sulfate sink due to primary reactions"
+				/>
+				<var name="h2sPrimarySink" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved hydrogen sulfide sink due to primary reactions"
+				/>
+				<var name="ch4PrimarySink" array_group="benthosGRP" units="mg C m^{-3} m s^{-1}"
+					description="Dissolved methane sink due to primary reactions"
+				/>
+				<var name="hco3PrimarySink" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved bicarbonate sink due to primary reactions"
+				/>
+				<var name="fesPrimarySink" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate iron sulfide sink due to primary reactions"
+				/>
+				<var name="fes2PrimarySink" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate pyrite sink due to primary reactions"
+				/>
+				<var name="sPrimarySink" array_group="benthosGRP" units="mmol S kg^{-1} m s^{-1}"
+					description="Particulate elemental sulfur sink due to primary reactions"
+				/>
+				<var name="caco3aPrimarySink" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate calcite sink due to primary reactions"
+				/>
+				<var name="caco3bPrimarySink" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate aragonite sink due to primary reactions"
+				/>
+				<var name="co3PrimarySink" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbonate sink due to primary reactions"
+				/>
+				<var name="camgco3PrimarySink" array_group="benthosGRP" units="mg C kg^{-1} m s^{-1}"
+					description="Particlate 15% magnesium calcite sink due to primary reactions"
+				/>
+				<var name="dicPrimarySink" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved inorganic Carbon sink due to primary reactions"
+				/>
+				<var name="alkPrimarySink" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved total alkalinity sink due to primary reactions"
+				/>
+			</var_array>
+			<var_array name="secondarySourceTend" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="pocaSecondarySource" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Carbon source due to secondary reactions"
+				/>
+				<var name="pocbSecondarySource" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Carbon source due to secondary reactions"
+				/>
+				<var name="poccSecondarySource" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Carbon source due to secondary reactions"
+				/>
+				<var name="ponaSecondarySource" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Nitrogen source due to secondary reactions"
+				/>
+				<var name="ponbSecondarySource" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Nitrogen source due to secondary reactions"
+				/>
+				<var name="poncSecondarySource" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Nitrogen source due to secondary reactions"
+				/>
+				<var name="popaSecondarySource" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Phosphorus source due to secondary reactions"
+				/>
+				<var name="popbSecondarySource" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Phosphorus source due to secondary reactions"
+				/>
+				<var name="popcSecondarySource" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Phosphorus source due to secondary reactions"
+				/>
+				<var name="o2SecondarySource" array_group="benthosGRP" units="mmol O2 m^{-3} m s^{-1}"
+					description="Dissolved Oxygen source due to secondary reactions"
+				/>
+				<var name="nh4SecondarySource" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved ammonium source due to secondary reactions"
+				/>
+				<var name="h2po4SecondarySource" array_group="benthosGRP" units="mmol P m^{-3} m s^{-1}"
+					description="Dissolved phosphate source due to secondary reactions"
+				/>
+				<var name="co2SecondarySource" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbon dioxide source due to secondary reactions"
+				/>
+				<var name="no3SecondarySource" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved nitrate source due to secondary reactions"
+				/>
+				<var name="mno2aSecondarySource" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate amorphous manganese oxyhydroxide source due to secondary reactions"
+				/>
+				<var name="mno2bSecondarySource" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate crystalline manganese oxyhydroxide source due to secondary reactions"
+				/>
+				<var name="mnSecondarySource" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved manganese source due to secondary reactions"
+				/>
+				<var name="feoh3aSecondarySource" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron oxyhydroxide source due to secondary reactions"
+				/>
+				<var name="feoh3bSecondarySource" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron oxyhydroxide source due to secondary reactions"
+				/>
+				<var name="feSecondarySource" array_group="benthosGRP" units="mmol Fe m^{-3} m s^{-1}"
+					description="Dissolved Iron source due to secondary reactions"
+				/>
+				<var name="fepaSecondarySource" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron-bound phosphorus source due to secondary reactions"
+				/>
+				<var name="fepbSecondarySource" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron-bound phosphorus source due to secondary reactions"
+				/>
+				<var name="so4SecondarySource" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved sulfate source due to secondary reactions"
+				/>
+				<var name="h2sSecondarySource" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved hydrogen sulfide source due to secondary reactions"
+				/>
+				<var name="ch4SecondarySource" array_group="benthosGRP" units="mg C m^{-3} m s^{-1}"
+					description="Dissolved methane source due to secondary reactions"
+				/>
+				<var name="hco3SecondarySource" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved bicarbonate source due to secondary reactions"
+				/>
+				<var name="fesSecondarySource" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate iron sulfide source due to secondary reactions"
+				/>
+				<var name="fes2SecondarySource" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate pyrite source due to secondary reactions"
+				/>
+				<var name="sSecondarySource" array_group="benthosGRP" units="mmol S kg^{-1} m s^{-1}"
+					description="Particulate elemental sulfur source due to secondary reactions"
+				/>
+				<var name="caco3aSecondarySource" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate calcite source due to secondary reactions"
+				/>
+				<var name="caco3bSecondarySource" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate aragonite source due to secondary reactions"
+				/>
+				<var name="co3SecondarySource" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbonate source due to secondary reactions"
+				/>
+				<var name="camgco3SecondarySource" array_group="benthosGRP" units="mg C kg^{-1} m s^{-1}"
+					description="Particlate 15% magnesium calcite source due to secondary reactions"
+				/>
+				<var name="dicSecondarySource" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved inorganic Carbon source due to secondary reactions"
+				/>
+				<var name="alkSecondarySource" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved total alkalinity source due to secondary reactions"
+				/>
+			</var_array>
+			<var_array name="secondarySinkTend" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="pocaSecondarySink" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Carbon sink due to secondary reactions"
+				/>
+				<var name="pocbSecondarySink" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Carbon sink due to secondary reactions"
+				/>
+				<var name="poccSecondarySink" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Carbon sink due to secondary reactions"
+				/>
+				<var name="ponaSecondarySink" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Nitrogen sink due to secondary reactions"
+				/>
+				<var name="ponbSecondarySink" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Nitrogen sink due to secondary reactions"
+				/>
+				<var name="poncSecondarySink" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Nitrogen sink due to secondary reactions"
+				/>
+				<var name="popaSecondarySink" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Phosphorus sink due to secondary reactions"
+				/>
+				<var name="popbSecondarySink" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Phosphorus sink due to secondary reactions"
+				/>
+				<var name="popcSecondarySink" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Phosphorus sink due to secondary reactions"
+				/>
+				<var name="o2SecondarySink" array_group="benthosGRP" units="mmol O2 m^{-3} m s^{-1}"
+					description="Dissolved Oxygen sink due to secondary reactions"
+				/>
+				<var name="nh4SecondarySink" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved ammonium sink due to secondary reactions"
+				/>
+				<var name="h2po4SecondarySink" array_group="benthosGRP" units="mmol P m^{-3} m s^{-1}"
+					description="Dissolved phosphate sink due to secondary reactions"
+				/>
+				<var name="co2SecondarySink" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbon dioxide sink due to secondary reactions"
+				/>
+				<var name="no3SecondarySink" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved nitrate sink due to secondary reactions"
+				/>
+				<var name="mno2aSecondarySink" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate amorphous manganese oxyhydroxide sink due to secondary reactions"
+				/>
+				<var name="mno2bSecondarySink" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate crystalline manganese oxyhydroxide sink due to secondary reactions"
+				/>
+				<var name="mnSecondarySink" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved manganese sink due to secondary reactions"
+				/>
+				<var name="feoh3aSecondarySink" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron oxyhydroxide sink due to secondary reactions"
+				/>
+				<var name="feoh3bSecondarySink" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron oxyhydroxide sink due to secondary reactions"
+				/>
+				<var name="feSecondarySink" array_group="benthosGRP" units="mmol Fe m^{-3} m s^{-1}"
+					description="Dissolved Iron sink due to secondary reactions"
+				/>
+				<var name="fepaSecondarySink" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron-bound phosphorus sink due to secondary reactions"
+				/>
+				<var name="fepbSecondarySink" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron-bound phosphorus sink due to secondary reactions"
+				/>
+				<var name="so4SecondarySink" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved sulfate sink due to secondary reactions"
+				/>
+				<var name="h2sSecondarySink" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved hydrogen sulfide sink due to secondary reactions"
+				/>
+				<var name="ch4SecondarySink" array_group="benthosGRP" units="mg C m^{-3} m s^{-1}"
+					description="Dissolved methane sink due to secondary reactions"
+				/>
+				<var name="hco3SecondarySink" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved bicarbonate sink due to secondary reactions"
+				/>
+				<var name="fesSecondarySink" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate iron sulfide sink due to secondary reactions"
+				/>
+				<var name="fes2SecondarySink" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate pyrite sink due to secondary reactions"
+				/>
+				<var name="sSecondarySink" array_group="benthosGRP" units="mmol S kg^{-1} m s^{-1}"
+					description="Particulate elemental sulfur sink due to secondary reactions"
+				/>
+				<var name="caco3aSecondarySink" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate calcite sink due to secondary reactions"
+				/>
+				<var name="caco3bSecondarySink" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate aragonite sink due to secondary reactions"
+				/>
+				<var name="co3SecondarySink" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbonate sink due to secondary reactions"
+				/>
+				<var name="camgco3SecondarySink" array_group="benthosGRP" units="mg C kg^{-1} m s^{-1}"
+					description="Particlate 15% magnesium calcite sink due to secondary reactions"
+				/>
+				<var name="dicSecondarySink" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved inorganic Carbon sink due to secondary reactions"
+				/>
+				<var name="alkSecondarySink" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved total alkalinity sink due to secondary reactions"
+				/>
+			</var_array>
+			<var_array name="carbonateSourceTend" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="pocaCarbonateSource" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Carbon source due to carbonate reactions"
+				/>
+				<var name="pocbCarbonateSource" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Carbon source due to carbonate reactions"
+				/>
+				<var name="poccCarbonateSource" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Carbon source due to carbonate reactions"
+				/>
+				<var name="ponaCarbonateSource" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Nitrogen source due to carbonate reactions"
+				/>
+				<var name="ponbCarbonateSource" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Nitrogen source due to carbonate reactions"
+				/>
+				<var name="poncCarbonateSource" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Nitrogen source due to carbonate reactions"
+				/>
+				<var name="popaCarbonateSource" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Phosphorus source due to carbonate reactions"
+				/>
+				<var name="popbCarbonateSource" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Phosphorus source due to carbonate reactions"
+				/>
+				<var name="popcCarbonateSource" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Phosphorus source due to carbonate reactions"
+				/>
+				<var name="o2CarbonateSource" array_group="benthosGRP" units="mmol O2 m^{-3} m s^{-1}"
+					description="Dissolved Oxygen source due to carbonate reactions"
+				/>
+				<var name="nh4CarbonateSource" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved ammonium source due to carbonate reactions"
+				/>
+				<var name="h2po4CarbonateSource" array_group="benthosGRP" units="mmol P m^{-3} m s^{-1}"
+					description="Dissolved phosphate source due to carbonate reactions"
+				/>
+				<var name="co2CarbonateSource" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbon dioxide source due to carbonate reactions"
+				/>
+				<var name="no3CarbonateSource" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved nitrate source due to carbonate reactions"
+				/>
+				<var name="mno2aCarbonateSource" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate amorphous manganese oxyhydroxide source due to carbonate reactions"
+				/>
+				<var name="mno2bCarbonateSource" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate crystalline manganese oxyhydroxide source due to carbonate reactions"
+				/>
+				<var name="mnCarbonateSource" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved manganese source due to carbonate reactions"
+				/>
+				<var name="feoh3aCarbonateSource" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron oxyhydroxide source due to carbonate reactions"
+				/>
+				<var name="feoh3bCarbonateSource" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron oxyhydroxide source due to carbonate reactions"
+				/>
+				<var name="feCarbonateSource" array_group="benthosGRP" units="mmol Fe m^{-3} m s^{-1}"
+					description="Dissolved Iron source due to carbonate reactions"
+				/>
+				<var name="fepaCarbonateSource" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron-bound phosphorus source due to carbonate reactions"
+				/>
+				<var name="fepbCarbonateSource" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron-bound phosphorus source due to carbonate reactions"
+				/>
+				<var name="so4CarbonateSource" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved sulfate source due to carbonate reactions"
+				/>
+				<var name="h2sCarbonateSource" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved hydrogen sulfide source due to carbonate reactions"
+				/>
+				<var name="ch4CarbonateSource" array_group="benthosGRP" units="mg C m^{-3} m s^{-1}"
+					description="Dissolved methane source due to carbonate reactions"
+				/>
+				<var name="hco3CarbonateSource" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved bicarbonate source due to carbonate reactions"
+				/>
+				<var name="fesCarbonateSource" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate iron sulfide source due to carbonate reactions"
+				/>
+				<var name="fes2CarbonateSource" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate pyrite source due to carbonate reactions"
+				/>
+				<var name="sCarbonateSource" array_group="benthosGRP" units="mmol S kg^{-1} m s^{-1}"
+					description="Particulate elemental sulfur source due to carbonate reactions"
+				/>
+				<var name="caco3aCarbonateSource" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate calcite source due to carbonate reactions"
+				/>
+				<var name="caco3bCarbonateSource" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate aragonite source due to carbonate reactions"
+				/>
+				<var name="co3CarbonateSource" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbonate source due to carbonate reactions"
+				/>
+				<var name="camgco3CarbonateSource" array_group="benthosGRP" units="mg C kg^{-1} m s^{-1}"
+					description="Particlate 15% magnesium calcite source due to carbonate reactions"
+				/>
+				<var name="dicCarbonateSource" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved inorganic Carbon source due to carbonate reactions"
+				/>
+				<var name="alkCarbonateSource" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved total alkalinity source due to carbonate reactions"
+				/>
+			</var_array>
+			<var_array name="carbonateSinkTend" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="pocaCarbonateSink" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Carbon sink due to carbonate reactions"
+				/>
+				<var name="pocbCarbonateSink" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Carbon sink due to carbonate reactions"
+				/>
+				<var name="poccCarbonateSink" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Carbon sink due to carbonate reactions"
+				/>
+				<var name="ponaCarbonateSink" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Nitrogen sink due to carbonate reactions"
+				/>
+				<var name="ponbCarbonateSink" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Nitrogen sink due to carbonate reactions"
+				/>
+				<var name="poncCarbonateSink" array_group="benthosGRP" units="mmol N kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Nitrogen sink due to carbonate reactions"
+				/>
+				<var name="popaCarbonateSink" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Labile Particulate Organic Phosphorus sink due to carbonate reactions"
+				/>
+				<var name="popbCarbonateSink" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Semi-Labile Particulate Organic Phosphorus sink due to carbonate reactions"
+				/>
+				<var name="popcCarbonateSink" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Refractory Particulate Organic Phosphorus sink due to carbonate reactions"
+				/>
+				<var name="o2CarbonateSink" array_group="benthosGRP" units="mmol O2 m^{-3} m s^{-1}"
+					description="Dissolved Oxygen sink due to carbonate reactions"
+				/>
+				<var name="nh4CarbonateSink" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved ammonium sink due to carbonate reactions"
+				/>
+				<var name="h2po4CarbonateSink" array_group="benthosGRP" units="mmol P m^{-3} m s^{-1}"
+					description="Dissolved phosphate sink due to carbonate reactions"
+				/>
+				<var name="co2CarbonateSink" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbon dioxide sink due to carbonate reactions"
+				/>
+				<var name="no3CarbonateSink" array_group="benthosGRP" units="mmol N m^{-3} m s^{-1}"
+					description="Dissolved nitrate sink due to carbonate reactions"
+				/>
+				<var name="mno2aCarbonateSink" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate amorphous manganese oxyhydroxide sink due to carbonate reactions"
+				/>
+				<var name="mno2bCarbonateSink" array_group="benthosGRP" units="mmol Mn kg^{-1} m s^{-1}"
+					description="Particulate crystalline manganese oxyhydroxide sink due to carbonate reactions"
+				/>
+				<var name="mnCarbonateSink" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved manganese sink due to carbonate reactions"
+				/>
+				<var name="feoh3aCarbonateSink" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron oxyhydroxide sink due to carbonate reactions"
+				/>
+				<var name="feoh3bCarbonateSink" array_group="benthosGRP" units="mmol Fe kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron oxyhydroxide sink due to carbonate reactions"
+				/>
+				<var name="feCarbonateSink" array_group="benthosGRP" units="mmol Fe m^{-3} m s^{-1}"
+					description="Dissolved Iron sink due to carbonate reactions"
+				/>
+				<var name="fepaCarbonateSink" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate amorphous iron-bound phosphorus sink due to carbonate reactions"
+				/>
+				<var name="fepbCarbonateSink" array_group="benthosGRP" units="mmol P kg^{-1} m s^{-1}"
+					description="Particulate crystalline iron-bound phosphorus sink due to carbonate reactions"
+				/>
+				<var name="so4CarbonateSink" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved sulfate sink due to carbonate reactions"
+				/>
+				<var name="h2sCarbonateSink" array_group="benthosGRP" units="mmol S m^{-3} m s^{-1}"
+					description="Dissolved hydrogen sulfide sink due to carbonate reactions"
+				/>
+				<var name="ch4CarbonateSink" array_group="benthosGRP" units="mg C m^{-3} m s^{-1}"
+					description="Dissolved methane sink due to carbonate reactions"
+				/>
+				<var name="hco3CarbonateSink" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved bicarbonate sink due to carbonate reactions"
+				/>
+				<var name="fesCarbonateSink" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate iron sulfide sink due to carbonate reactions"
+				/>
+				<var name="fes2CarbonateSink" array_group="benthosGRP" units="mmol kg m^{-1} m s^{-1}"
+					description="Particulate pyrite sink due to carbonate reactions"
+				/>
+				<var name="sCarbonateSink" array_group="benthosGRP" units="mmol S kg^{-1} m s^{-1}"
+					description="Particulate elemental sulfur sink due to carbonate reactions"
+				/>
+				<var name="caco3aCarbonateSink" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate calcite sink due to carbonate reactions"
+				/>
+				<var name="caco3bCarbonateSink" array_group="benthosGRP" units="mmol C kg^{-1} m s^{-1}"
+					description="Particulate aragonite sink due to carbonate reactions"
+				/>
+				<var name="co3CarbonateSink" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved carbonate sink due to carbonate reactions"
+				/>
+				<var name="camgco3CarbonateSink" array_group="benthosGRP" units="mg C kg^{-1} m s^{-1}"
+					description="Particlate 15% magnesium calcite sink due to carbonate reactions"
+				/>
+				<var name="dicCarbonateSink" array_group="benthosGRP" units="mmol C m^{-3} m s^{-1}"
+					description="Dissolved inorganic Carbon sink due to carbonate reactions"
+				/>
+				<var name="alkCarbonateSink" array_group="benthosGRP" units="meq m^{-3} m s^{-1}"
+					description="Dissolved total alkalinity sink due to carbonate reactions"
+				/>
+			</var_array>
+			<var_array name="netBenthosTracersCell" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="pocaBenthosCell" array_group="benthosGRP" units="mmol C kg^{-1} m"
+					description="Labile Particulate Organic Carbon in the benthos column"
+				/>
+				<var name="pocbBenthosCell" array_group="benthosGRP" units="mmol C kg^{-1} m"
+					description="Semi-Labile Particulate Organic Carbon in the benthos column"
+				/>
+				<var name="poccBenthosCell" array_group="benthosGRP" units="mmol C kg^{-1} m"
+					description="Refractory Particulate Organic Carbon in the benthos column"
+				/>
+				<var name="ponaBenthosCell" array_group="benthosGRP" units="mmol N kg^{-1} m"
+					description="Labile Particulate Organic Nitrogen in the benthos column"
+				/>
+				<var name="ponbBenthosCell" array_group="benthosGRP" units="mmol N kg^{-1} m"
+					description="Semi-Labile Particulate Organic Nitrogen in the benthos column"
+				/>
+				<var name="poncBenthosCell" array_group="benthosGRP" units="mmol N kg^{-1} m"
+					description="Refractory Particulate Organic Nitrogen in the benthos column"
+				/>
+				<var name="popaBenthosCell" array_group="benthosGRP" units="mmol P kg^{-1} m"
+					description="Labile Particulate Organic Phosphorus in the benthos column"
+				/>
+				<var name="popbBenthosCell" array_group="benthosGRP" units="mmol P kg^{-1} m"
+					description="Semi-Labile Particulate Organic Phosphorus in the benthos column"
+				/>
+				<var name="popcBenthosCell" array_group="benthosGRP" units="mmol P kg^{-1} m"
+					description="Refractory Particulate Organic Phosphorus in the benthos column"
+				/>
+				<var name="o2BenthosCell" array_group="benthosGRP" units="mmol O2 m^{-3} m"
+					description="Dissolved Oxygen in the benthos column"
+				/>
+				<var name="nh4BenthosCell" array_group="benthosGRP" units="mmol N m^{-3} m"
+					description="Dissolved ammonium in the benthos column"
+				/>
+				<var name="h2po4BenthosCell" array_group="benthosGRP" units="mmol P m^{-3} m"
+					description="Dissolved phosphate in the benthos column"
+				/>
+				<var name="co2BenthosCell" array_group="benthosGRP" units="mmol C m^{-3} m"
+					description="Dissolved carbon dioxide in the benthos column"
+				/>
+				<var name="no3BenthosCell" array_group="benthosGRP" units="mmol N m^{-3} m"
+					description="Dissolved nitrate in the benthos column"
+				/>
+				<var name="mno2aBenthosCell" array_group="benthosGRP" units="mmol Mn kg^{-1} m"
+					description="Particulate amorphous manganese oxyhydroxide in the benthos column"
+				/>
+				<var name="mno2bBenthosCell" array_group="benthosGRP" units="mmol Mn kg^{-1} m"
+					description="Particulate crystalline manganese oxyhydroxide in the benthos column"
+				/>
+				<var name="mnBenthosCell" array_group="benthosGRP" units="meq m^{-3} m"
+					description="Dissolved manganese in the benthos column"
+				/>
+				<var name="feoh3aBenthosCell" array_group="benthosGRP" units="mmol Fe kg^{-1} m"
+					description="Particulate amorphous iron oxyhydroxide in the benthos column"
+				/>
+				<var name="feoh3bBenthosCell" array_group="benthosGRP" units="mmol Fe kg^{-1} m"
+					description="Particulate crystalline iron oxyhydroxide in the benthos column"
+				/>
+				<var name="feBenthosCell" array_group="benthosGRP" units="mmol Fe m^{-3} m"
+					description="Dissolved Iron in the benthos column"
+				/>
+				<var name="fepaBenthosCell" array_group="benthosGRP" units="mmol P kg^{-1} m"
+					description="Particulate amorphous iron-bound phosphorus in the benthos column"
+				/>
+				<var name="fepbBenthosCell" array_group="benthosGRP" units="mmol P kg^{-1} m"
+					description="Particulate crystalline iron-bound phosphorus in the benthos column"
+				/>
+				<var name="so4BenthosCell" array_group="benthosGRP" units="mmol S m^{-3} m"
+					description="Dissolved sulfate in the benthos column"
+				/>
+				<var name="h2sBenthosCell" array_group="benthosGRP" units="mmol S m^{-3} m"
+					description="Dissolved hydrogen sulfide in the benthos column"
+				/>
+				<var name="ch4BenthosCell" array_group="benthosGRP" units="mg C m^{-3} m"
+					description="Dissolved methane in the benthos column"
+				/>
+				<var name="hco3BenthosCell" array_group="benthosGRP" units="mmol C m^{-3} m"
+					description="Dissolved bicarbonate in the benthos column"
+				/>
+				<var name="fesBenthosCell" array_group="benthosGRP" units="mmol kg m^{-1} m"
+					description="Particulate iron sulfide in the benthos column"
+				/>
+				<var name="fes2BenthosCell" array_group="benthosGRP" units="mmol kg m^{-1} m"
+					description="Particulate pyrite in the benthos column"
+				/>
+				<var name="sBenthosCell" array_group="benthosGRP" units="mmol S kg^{-1} m"
+					description="Particulate elemental sulfur in the benthos column"
+				/>
+				<var name="caco3aBenthosCell" array_group="benthosGRP" units="mmol C kg^{-1} m"
+					description="Particulate calcite in the benthos column"
+				/>
+				<var name="caco3bBenthosCell" array_group="benthosGRP" units="mmol C kg^{-1} m"
+					description="Particulate aragonite in the benthos column"
+				/>
+				<var name="co3BenthosCell" array_group="benthosGRP" units="mmol C m^{-3} m"
+					description="Dissolved carbonate in the benthos column"
+				/>
+				<var name="camgco3BenthosCell" array_group="benthosGRP" units="mg C kg^{-1} m"
+					description="Particlate 15% magnesium calcite in the benthos column"
+				/>
+				<var name="dicBenthosCell" array_group="benthosGRP" units="mmol C m^{-3} m"
+					description="Dissolved inorganic Carbon in the benthos column"
+				/>
+				<var name="alkBenthosCell" array_group="benthosGRP" units="meq m^{-3} m"
+					description="Dissolved total alkalinity in the benthos column"
+				/>
+			</var_array>
+			<var_array name="netElements" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="netCarbon" array_group="benthosGRP" units="mmol C m^{-2}"
+					description="Total Carbon in the active benthos layer"
+				/>
+				<var name="netOxygen" array_group="benthosGRP" units="mmol O2 m^{-2}"
+					description="Total Oxygen in the active benthos layer"
+				/>
+				<var name="netNitrogen" array_group="benthosGRP" units="mmol N m^{-2}"
+					description="Total Nitrogen in the active benthos layer"
+				/>
+				<var name="netSulfur" array_group="benthosGRP" units="mmol S m^{-2}"
+					description="Total Sulfur in the active benthos layer"
+				/>
+				<var name="netPhosphorus" array_group="benthosGRP" units="mmol P m^{-2}"
+					description="Total Phosphorus in the active benthos layer"
+				/>
+				<var name="netManganese" array_group="benthosGRP" units="mmol Mn m^{-2}"
+					description="Total Manganese in the active benthos layer"
+				/>
+				<var name="netIron" array_group="benthosGRP" units="mmol Fe m^{-2}"
+					description="Total Iron in the active benthos layer"
+				/>
+                        </var_array>
+			<var_array name="netElementsReactionTend" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="netCarbonReactionTend" array_group="benthosGRP" units="mmol C m^{-2} s^{-1}"
+					description="Reaction tendency of Carbon in the active benthos layer"
+				/>
+				<var name="netOxygenReactionTend" array_group="benthosGRP" units="mmol O2 m^{-2} s^{-1}"
+					description="Reaction tendency of Oxygen in the active benthos layer"
+				/>
+				<var name="netNitrogenReactionTend" array_group="benthosGRP" units="mmol N m^{-2} s^{-1}"
+					description="Reaction tendency of Nitrogen in the active benthos layer"
+				/>
+				<var name="netSulfurReactionTend" array_group="benthosGRP" units="mmol S m^{-2} s^{-1}"
+					description="Reaction tendency of Sulfur in the active benthos layer"
+				/>
+				<var name="netPhosphorusReactionTend" array_group="benthosGRP" units="mmol P m^{-2} s^{-1}"
+					description="Reaction tendency of Phosphorus in the active benthos layer"
+				/>
+				<var name="netManganeseReactionTend" array_group="benthosGRP" units="mmol Mn m^{-2} s^{-1}"
+					description="Reaction tendency of Manganese in the active benthos layer"
+				/>
+				<var name="netIronReactionTend" array_group="benthosGRP" units="mmol Fe m^{-2} s^{-1}"
+					description="Reaction tendency of Iron in the active benthos layer"
+				/>
+                        </var_array>
+			<var_array name="netElementsTransportTend" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="netCarbonTransportTend" array_group="benthosGRP" units="mmol C m^{-2} s^{-1}"
+					description="Transport tendency of  Carbon in the active benthos layer"
+				/>
+				<var name="netOxygenTransportTend" array_group="benthosGRP" units="mmol O2 m^{-2} s^{-1}"
+					description="Transport tendency of  Oxygen in the active benthos layer"
+				/>
+				<var name="netNitrogenTransportTend" array_group="benthosGRP" units="mmol N m^{-2} s^{-1}"
+					description="Transport tendency of  Nitrogen in the active benthos layer"
+				/>
+				<var name="netSulfurTransportTend" array_group="benthosGRP" units="mmol S m^{-2} s^{-1}"
+					description="Transport tendency of  Sulfur in the active benthos layer"
+				/>
+				<var name="netPhosphorusTransportTend" array_group="benthosGRP" units="mmol P m^{-2} s^{-1}"
+					description="Transport tendency of  Phosphorus in the active benthos layer"
+				/>
+				<var name="netManganeseTransportTend" array_group="benthosGRP" units="mmol Mn m^{-2} s^{-1}"
+					description="Transport tendency of  Manganese in the active benthos layer"
+				/>
+				<var name="netIronTransportTend" array_group="benthosGRP" units="mmol Fe m^{-2} s^{-1}"
+					description="Transport tendency of  Iron in the active benthos layer"
+				/>
+                        </var_array>
+			<var_array name="netElementsTend" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="netCarbonTend" array_group="benthosGRP" units="mmol C m^{-2} s^{-1}"
+					description=" tendency of  Carbon in the active benthos layer"
+				/>
+				<var name="netOxygenTend" array_group="benthosGRP" units="mmol O2 m^{-2} s^{-1}"
+					description=" tendency of  Oxygen in the active benthos layer"
+				/>
+				<var name="netNitrogenTend" array_group="benthosGRP" units="mmol N m^{-2} s^{-1}"
+					description=" tendency of  Nitrogen in the active benthos layer"
+				/>
+				<var name="netSulfurTend" array_group="benthosGRP" units="mmol S m^{-2} s^{-1}"
+					description=" tendency of  Sulfur in the active benthos layer"
+				/>
+				<var name="netPhosphorusTend" array_group="benthosGRP" units="mmol P m^{-2} s^{-1}"
+					description=" tendency of  Phosphorus in the active benthos layer"
+				/>
+				<var name="netManganeseTend" array_group="benthosGRP" units="mmol Mn m^{-2} s^{-1}"
+					description=" tendency of  Manganese in the active benthos layer"
+				/>
+				<var name="netIronTend" array_group="benthosGRP" units="mmol Fe m^{-2} s^{-1}"
+					description=" tendency of  Iron in the active benthos layer"
+				/>
+                        </var_array>
+		</var_struct> 
+		<var_struct name="benthosDiagFieldsLevel2" time_levs="1" packages="benthosTracersPKG">
+			<var name="benthos_diag_O2_PRODUCTION" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units="mmol O2 m^{-3} s^{-1}"
+				description="O2 Production"
+			/>
+		</var_struct>
+		<var_struct name="benthosDiagFieldsLevel3" time_levs="1" packages="benthosTracersPKG">
+			<var name="benthos_diag_ponToSed" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units="mmol N m^{-3} m s^{-1}"
+				description="N Burial Flux to Sediments"
+			/>
+			<var name="benthos_diag_popToSed" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units="mmol P m^{-3} m s^{-1}"
+				description="P Flux to Sediments"
+			/>
+			<var name="benthos_diag_bsiToSed" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units="mmol Si m^{-3} m s^{-1}"
+				description="Biogenic Si Flux to Sediments"
+			/>
+			<var name="benthos_diag_dustToSed" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units="kg m^{-2} s^{-1}"
+				description="Dust Flux to Sediments"
+			/>
+			<var name="benthos_diag_OtherRemin" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units="mmol C m^{-3} m s^{-1}"
+				description="Non-Oxic, Non-Dentr Remineralization in Sediments"
+			/>
+		</var_struct>
+		<var_struct name="benthosDiagFieldsLevel4" time_levs="1" packages="benthosTracersPKG">
+			<var name="benthos_diag_tot_CaCO3_form_zint" type="real" dimensions="nCells Time" units="mmol C m^{-3} m s^{-1}"
+				description="Total CaCO3 Formation Vertical Integral"
+			/>
+			<var name="benthos_diag_zsatcalc" type="real" dimensions="nCells Time" units="m"
+				description="Calcite Saturation Depth"
+			/>
+			<var name="benthos_diag_zsatarag" type="real" dimensions="nCells Time" units="m"
+				description="Aragonite Saturation Depth"
+			/>
+			<var name="benthos_diag_CO3" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units="mmol C m^{-3}"
+				description="Carbonate Ion Concentration"
+			/>
+			<var name="benthos_diag_HCO3" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units="mmol C m^{-3}"
+				description="Bicarbonate Ion Concentration"
+			/>
+		</var_struct>
+		<var_struct name="benthosDiagFieldsLevel5" time_levs="1" packages="benthosTracersPKG">
+			<var name="benthos_diag_NO3_RESTORE" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units="mmol N m^{-3} s^{-1}"
+				description="NO3 Restoring"
+			/>
+			<var name="benthos_diag_SiO3_RESTORE" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units="mmol Si m^{-3} s^{-1}"
+				description="SiO3 Restoring"
+			/>
+		</var_struct>
+	</var_struct>
+
+	
