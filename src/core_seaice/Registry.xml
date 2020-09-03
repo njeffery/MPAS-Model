@@ -1019,32 +1019,32 @@
 			possible_values="positive real"
 			icepack_name="mu_max_phaeo"
 		/>
-		<nml_option name="config_temperature_growth_diatoms" type="real" default_value="0.06" units="1/C"
+		<nml_option name="config_temperature_growth_diatoms" type="real" default_value="0.063" units="1/C"
 			description="Controls the temperature dependence of growth for diatoms"
 			possible_values="positive real less than 1"
 			icepack_name="grow_Tdep_diatoms"
 		/>
-		<nml_option name="config_temperature_growth_small_plankton" type="real" default_value="0.06" units="1/C"
+		<nml_option name="config_temperature_growth_small_plankton" type="real" default_value="0.063" units="1/C"
 			description="Controls the temperature dependence of growth for small plankton"
 			possible_values="positive real less than 1"
 			icepack_name="grow_Tdep_sp"
 		/>
-		<nml_option name="config_temperature_growth_phaeocystis" type="real" default_value="0.06" units="1/C"
+		<nml_option name="config_temperature_growth_phaeocystis" type="real" default_value="0.063" units="1/C"
 			description="Controls the temperature dependence of growth for phaeocystis"
 			possible_values="positive real less than 1"
 			icepack_name="grow_Tdep_phaeo"
 		/>
-		<nml_option name="config_grazed_fraction_diatoms" type="real" default_value="0.0" units="unitless"
+		<nml_option name="config_grazed_fraction_diatoms" type="real" default_value="0.19" units="unitless"
 			description="Fraction of diatom biomass grazed"
 			possible_values="zero or positive real less than 1"
 			icepack_name="fr_graze_diatoms"
 		/>
-		<nml_option name="config_grazed_fraction_small_plankton" type="real" default_value="0.7" units="unitless"
+		<nml_option name="config_grazed_fraction_small_plankton" type="real" default_value="0.19" units="unitless"
 			description="Fraction of small plankton biomass grazed"
 			possible_values="zero or positive real less than 1"
 			icepack_name="fr_graze_sp"
 		/>
-		<nml_option name="config_grazed_fraction_phaeocystis" type="real" default_value="0.7" units="unitless"
+		<nml_option name="config_grazed_fraction_phaeocystis" type="real" default_value="0.19" units="unitless"
 			description="Fraction of phaeocystis biomass grazed"
 			possible_values="zero or positive real less than 1"
 			icepack_name="fr_graze_phaeo"
@@ -3858,19 +3858,19 @@
 		/>
 		<var name="oceanBioFluxes"			type="real"	dimensions="nZBGCTracers nCells Time"			name_in_code="oceanBioFluxes"
 			units="mmol/m2/s"
-			description="Tracers are ordered: diatom nitrogen, smallPlankton nitrogen, phaeocystis nitrogen, nitrate, polysaccarid carbon, lipid carbon, ammonium, silicate, DMSPp, DMSPd, DMS, Nonreactive nitrate, Protein nitrogen, dissolved iron in umol/m2/s, particulate iron in umol/m2/s, humic carbon, black carbon1 in mg/m2/s, black carbon2 in mg/m2/s, dust1 in mg/m2/s, dust2 in mg/m2/s, dust3 in mg/m2/s, dust4 in mg/m2/s"
+			description="Tracers are ordered: diatom nitrogen, smallPlankton nitrogen, phaeocystis nitrogen, nitrate, polysaccarid carbon, lipid carbon, dissolved inorganic carbon, ammonium, silicate, DMSPp, DMSPd, DMS, Nonreactive nitrate, Protein nitrogen, dissolved iron in umol/m2/s, particulate iron in umol/m2/s, humic carbon, black carbon1 in mg/m2/s, black carbon2 in mg/m2/s, dust1 in mg/m2/s, dust2 in mg/m2/s, dust3 in mg/m2/s, dust4 in mg/m2/s"
 			icepack_name="flux_bio"
 			packages="pkgColumnBiogeochemistry;pkgColumnPackage"
 		/>
 		<var name="oceanBioFluxesCategory"		type="real"	dimensions="nZBGCTracers nCategories nCells Time"	name_in_code="oceanBioFluxesCategory"
 			units="mmol/m2/s"
-			description="Tracers are ordered: diatom nitrogen, smallPlankton nitrogen, phaeocystis nitrogen, nitrate, polysaccarid carbon, lipid carbon, ammonium, silicate, DMSPp, DMSPd, DMS, Nonreactive nitrate, Protein nitrogen, dissolved iron in umol/m2/s, particulate iron in umol/m2/s, humic carbon, black carbon1 in mg/m2/s, black carbon2 in mg/m2/s, dust1 in mg/m2/s, dust2 in mg/m2/s, dust3 in mg/m2/s, dust4 in mg/m2/s"
+			description="Tracers are ordered: diatom nitrogen, smallPlankton nitrogen, phaeocystis nitrogen, nitrate, polysaccarid carbon, lipid carbon, dissolved inorganic carbon, dissolved inorganic carbon, ammonium, silicate, DMSPp, DMSPd, DMS, Nonreactive nitrate, Protein nitrogen, dissolved iron in umol/m2/s, particulate iron in umol/m2/s, humic carbon, black carbon1 in mg/m2/s, black carbon2 in mg/m2/s, dust1 in mg/m2/s, dust2 in mg/m2/s, dust3 in mg/m2/s, dust4 in mg/m2/s"
 			icepack_name="flux_bion"
 			packages="pkgColumnBiogeochemistry;pkgColumnPackage"
 		/>
 		<var name="oceanBioConcentrations"		type="real"	dimensions="nZBGCTracers nCells Time"			name_in_code="oceanBioConcentrations"
 			units="mmol/m3"
-			description="Tracers are ordered: diatom nitrogen, smallPlankton nitrogen, phaeocystis nitrogen, nitrate, polysaccarid carbon, lipid carbon, ammonium, silicate, DMSPp, DMSPd, DMS, Nonreactive nitrate, Protein nitrogen, dissolved iron in umol/m3, particulate iron in umol/m3, humic carbon, black carbon1 in mg/m3, black carbon2 in mg/m3,dust1 in mg/m3, dust2 in mg/m3, dust3 in mg/m3, dust4 in mg/m3"
+			description="Tracers are ordered and use maxBGCType: diatom nitrogen, smallPlankton nitrogen, phaeocystis nitrogen, nitrate, polysaccarid carbon, lipid carbon, doc(3),  dissolved inorganic carbon, ammonium, silicate, DMSPp, DMSPd, DMS, Nonreactive nitrate, Protein nitrogen, dissolved iron(1) and dissolved iron(2)  in umol/m3, particulate iron(1) and particulate iron(2) in umol/m3, humic carbon, black carbon1 in mg/m3, black carbon2 in mg/m3,dust1 in mg/m3, dust2 in mg/m3, dust3 in mg/m3, dust4 in mg/m3"
 			icepack_name="ocean_bio"
 			packages="pkgColumnBiogeochemistry;pkgColumnPackage"
 		/>
@@ -3948,11 +3948,11 @@
 		<var name="totalSkeletalAlgae"			type="real"	dimensions="nCells Time"				name_in_code="totalSkeletalAlgae"/>
 		<var name="totalVerticalBiologyIce" 		type="real"	dimensions="nZBGCTracers nCells Time"			name_in_code="totalVerticalBiologyIce"
 			units="mmol/m2"
-			description="Tracers are ordered: diatom nitrogen, smallPlankton nitrogen, phaeocystis nitrogen, nitrate, polysaccarid carbon, lipid carbon, ammonium, silicate, DMSPp, DMSPd, DMS, Nonreactive nitrate, Protein nitrogen, dissolved iron in umol/m2, particulate iron in umol/m2, humic carbon, black carbon1 in mg/m2, black carbon2 in mg/m2,dust1 in mg/m2, dust2 in mg/m2, dust3 in mg/m2, dust4 in mg/m2"
+			description="Tracers are ordered: diatom nitrogen, smallPlankton nitrogen, phaeocystis nitrogen, nitrate, polysaccarid carbon, lipid carbon, dissolved inorganic carbon, ammonium, silicate, DMSPp, DMSPd, DMS, Nonreactive nitrate, Protein nitrogen, dissolved iron in umol/m2, particulate iron in umol/m2, humic carbon, black carbon1 in mg/m2, black carbon2 in mg/m2,dust1 in mg/m2, dust2 in mg/m2, dust3 in mg/m2, dust4 in mg/m2"
 		/>
 		<var name="totalVerticalBiologySnow"		type="real"	dimensions="nZBGCTracers nCells Time"			name_in_code="totalVerticalBiologySnow"
 			units="mmol/m2"
-			description="Tracers are ordered: diatom nitrogen, smallPlankton nitrogen, phaeocystis nitrogen, nitrate, polysaccarid carbon, lipid carbon, ammonium, silicate, DMSPp, DMSPd, DMS, Nonreactive nitrate, Protein nitrogen, dissolved iron in umol/m2, particulate iron in umol/m2, humic carbon, black carbon1 in mg/m2, black carbon2 in mg/m2,dust1 in mg/m2, dust2 in mg/m2, dust3 in mg/m2, dust4 in mg/m2"
+			description="Tracers are ordered: diatom nitrogen, smallPlankton nitrogen, phaeocystis nitrogen, nitrate, polysaccarid carbon, lipid carbon, dissolved inorganic carbon, ammonium, silicate, DMSPp, DMSPd, DMS, Nonreactive nitrate, Protein nitrogen, dissolved iron in umol/m2, particulate iron in umol/m2, humic carbon, black carbon1 in mg/m2, black carbon2 in mg/m2,dust1 in mg/m2, dust2 in mg/m2, dust3 in mg/m2, dust4 in mg/m2"
 		/>
 		<var name="totalVerticalSalinity"		type="real"	dimensions="nCells Time"				name_in_code="totalVerticalSalinity"		packages="pkgTracerZSalinity;pkgColumnPackage"/>
 		<var name="totalChlorophyll"			type="real"	dimensions="nCells Time"				name_in_code="totalChlorophyll"

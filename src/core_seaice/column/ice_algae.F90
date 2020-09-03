@@ -1587,6 +1587,14 @@
       real (kind=dbl_kind),  parameter, dimension(max_algae) :: &
          alpha2max_high  = (/ 0.25_dbl_kind, 0.25_dbl_kind, 0.25_dbl_kind/) ! light limitation (1/(W/m^2))
 
+      real (kind=dbl_kind), parameter, dimension(max_algae) :: &
+         graze_exponent = (/ 0.333_dbl_kind, c1, c1/) ! Implicit grazing exponent (Dunne et al. 2005)
+
+      real (kind=dbl_kind), parameter :: &
+         graze_conc = 1.36_dbl_kind ! (mmol N/m^3) converted from Dunne et al 2005
+                                    ! data fit for phytoplankton (1.9 mmol C/m^3) to
+                                    ! ice algal N with 20% porosity and C/N = 7
+
       integer (kind=int_kind) :: k, n
 
       real (kind=dbl_kind), dimension(n_algae) :: &
@@ -1936,8 +1944,8 @@
 
        if (tr_bgc_Sil) U_Sil_tot = min(U_Sil_tot, max_loss * Silin/dt)
        if (tr_bgc_Fe)  U_Fe_tot  = min(U_Fe_tot, max_loss * Fed_tot/dt)
-       U_Nit_tot = min(U_Nit_tot, max_loss * Nitin/dt)  
-       U_Am_tot  = min(U_Am_tot,  max_loss * Amin/dt)    
+       U_Nit_tot = min(U_Nit_tot, max_loss * Nitin/dt)
+       U_Am_tot  = min(U_Am_tot,  max_loss * Amin/dt)
 
        do k = 1, n_algae
           U_Am(k)  = U_Am_f(k)*U_Am_tot
@@ -1961,13 +1969,13 @@
           U_Am(k)   = fr_Am(k)  * grow_N(k)
           U_Sil(k)  = R_Si2N(k) * grow_N(k)
           U_Fe (k)  = R_Fe2N(k) * grow_N(k)
-    
+
       !-----------------------------------------------------------------------
       ! Define reaction terms
       !-----------------------------------------------------------------------
 
       ! Since the framework remains incomplete at this point,
-      ! it is assumed as a starting expedient that 
+      ! it is assumed as a starting expedient that
       ! DMSP loss to melting results in 10% conversion to DMS
       ! which is then given a ten day removal constant.
       ! Grazing losses are channeled into rough spillage and assimilation
@@ -1975,32 +1983,35 @@
 
       !--------------------------------------------------------------------
       ! Algal reaction term
-      ! N_react = (grow_N*(c1 - fr_graze-fr_resp) - mort)*dt  
+      ! N_react = (grow_N*(c1 - fr_graze-fr_resp) - mort)*dt  !! NJ OLD GRAZING
+      ! N_react = (grow_N*(c1 - fr_graze * (N/graze_conc)**graze_exp-fr_resp) - mort)*dt
+      ! with maximum grazing less than max_loss * Nin(k)/dt
       !--------------------------------------------------------------------
 
-          resp(k)   = fr_resp  * grow_N(k)  
-          graze(k)  = fr_graze(k) * grow_N(k)
+          resp(k)   = fr_resp  * grow_N(k)
+        ! graze(k)  = fr_graze(k) * grow_N(k)   !! NJ OLD GRAZING
+          graze(k)  = min(max_loss * Nin(k)/dt, grow_N(k) * fr_graze(k) * (Nin(k)/graze_conc)**graze_exponent(k))
           mort(k)   = min(max_loss * Nin(k)/dt, mort_pre(k)* exp(mort_Tdep(k)*dTemp) * Nin(k) / secday)
- 
+
         ! history variables
           grow_alg(k) = grow_N(k)
           upNOn(k) = U_Nit(k)
           upNHn(k) = U_Am(k)
 
-          N_s_p  = grow_N(k) * dt  
-          N_r_g  = graze(k)  * dt 
+          N_s_p  = grow_N(k) * dt
+          N_r_g  = graze(k)  * dt
           N_r_r  = resp(k)   * dt
           N_r_mo = mort(k)   * dt
-          N_s(k)    = (c1- fr_resp - fr_graze(k)) * grow_N(k) *dt   !N_s_p
-          N_r(k)    = mort(k) * dt                                  !N_r_g  + N_r_mo + N_r_r 
+          N_s(k)    = N_s_p !(c1- fr_resp - fr_graze(k)) * grow_N(k) *dt
+          N_r(k)    = N_r_g  + N_r_mo + N_r_r !mort(k) * dt
 
           graze_N   = graze_N + graze(k)
           graze_C   = graze_C + R_C2N(k)*graze(k)
-          mort_N    = mort_N + mort(k)      
+          mort_N    = mort_N + mort(k)
           mort_C    = mort_C + R_C2N(k)*mort(k)
           resp_N    = resp_N + resp(k)
           growth_N  = growth_N + grow_N(k)
- 
+
       enddo ! n_algae
       !--------------------------------------------------------------------
       ! Ammonium source: algal grazing, respiration, and mortality
