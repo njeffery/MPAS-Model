@@ -160,7 +160,7 @@ mpas_ocn_equation_of_state_wright.o: mpas_ocn_constants.o mpas_ocn_config.o
 
 mpas_ocn_test.o:  mpas_ocn_constants.o mpas_ocn_config.o
 
-mpas_ocn_constants.o mpas_ocn_config.o:
+mpas_ocn_constants.o: mpas_ocn_config.o
 
 mpas_ocn_forcing.o: mpas_ocn_constants.o mpas_ocn_config.o mpas_ocn_forcing_restoring.o
 
@@ -190,7 +190,7 @@ mpas_ocn_tracer_ecosys.o: mpas_ocn_constants.o mpas_ocn_config.o mpas_ocn_framew
 
 mpas_ocn_tracer_DMS.o: mpas_ocn_constants.o mpas_ocn_config.o
 
-mpas_ocn_tracer_benthos.o: mpas_ocn_constants.o mpas_ocn_config.o
+mpas_ocn_tracer_benthos.o: mpas_ocn_tracer_ecosys.o mpas_ocn_constants.o mpas_ocn_config.o
 
 mpas_ocn_tracer_MacroMolecules.o: mpas_ocn_constants.o mpas_ocn_config.o
 

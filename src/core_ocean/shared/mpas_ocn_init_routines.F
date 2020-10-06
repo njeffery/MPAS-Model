@@ -645,10 +645,12 @@ end subroutine ocn_init_routines_compute_min_max_level!}}}
       real (kind=RKIND), intent(in) :: dt
       integer, intent(out) :: err
 
+
       type (mpas_pool_type), pointer :: meshPool
       type (mpas_pool_type), pointer :: statePool, tracersPool
       type (mpas_pool_type), pointer :: forcingPool, scratchPool
       type (mpas_pool_type), pointer :: seafloorTracersPool
+
       integer :: i, iEdge, iCell, k
       integer :: err1
 
@@ -657,7 +659,7 @@ end subroutine ocn_init_routines_compute_min_max_level!}}}
       real (kind=RKIND), dimension(:,:), pointer :: layerThickness
       real (kind=RKIND), dimension(:,:), pointer :: normalVelocity
 
-      real (kind=RKIND), dimension(:,:,:), pointer :: tracersGroup, benthosTracers
+      real (kind=RKIND), dimension(:,:,:), pointer :: tracersGroup
 
       integer, pointer :: nCells, nEdges, nVertices, nVertLevels, nBenthicVertLevels
 
@@ -667,7 +669,6 @@ end subroutine ocn_init_routines_compute_min_max_level!}}}
       call mpas_pool_get_dimension(block % dimensions, 'nEdges', nEdges)
       call mpas_pool_get_dimension(block % dimensions, 'nVertices', nVertices)
       call mpas_pool_get_dimension(block % dimensions, 'nVertLevels', nVertLevels)
-      call mpas_pool_get_dimension(block % dimensions, 'nBenthicVertLevels', nBenthicVertLevels)
 
       call mpas_pool_get_subpool(block % structs, 'mesh', meshPool)
       call mpas_pool_get_subpool(block % structs, 'state', statePool)
@@ -675,7 +676,6 @@ end subroutine ocn_init_routines_compute_min_max_level!}}}
       call mpas_pool_get_subpool(block % structs, 'scratch', scratchPool)
 
       call mpas_pool_get_subpool(statePool, 'tracers', tracersPool)
-      call mpas_pool_get_subpool(forcingPool, 'seafloorTracers', seafloorTracersPool)
 
       call mpas_pool_get_array(meshPool, 'highOrderAdvectionMask', highOrderAdvectionMaskTmp)
       call mpas_pool_get_array(meshPool, 'boundaryCell', boundaryCellTmp)
@@ -741,13 +741,6 @@ end subroutine ocn_init_routines_compute_min_max_level!}}}
             end if
          end if
       end do
-
-      call mpas_pool_get_array(seafloorTracersPool, 'benthosTracers', benthosTracers)
-      if (associated(benthosTracers)) then
-         do iCell=1,nCells
-            benthosTracers(:,1:nBenthicVertLevels,iCell) = -1.0e34_RKIND
-         end do
-      end if
 
       ! ------------------------------------------------------------------
       ! Accumulating various parametrizations of the transport velocity
