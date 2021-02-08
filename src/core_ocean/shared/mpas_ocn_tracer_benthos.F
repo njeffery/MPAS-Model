@@ -87,7 +87,6 @@ module ocn_tracer_benthos
   type(benthos_element_indices_type), public :: elementIndices
   type(BGC_indices_type), public :: ecosysBenthosIndices
 
-
 !***********************************************************************
 
 contains
@@ -162,7 +161,7 @@ contains
       !
       !-----------------------------------------------------------------
       
-      real (kind=RKIND), dimension(:,:,:), intent(inout) :: &
+      real (kind=RKIND), dimension(:,:,:), intent(in) :: &
          benthosTracers        ! benthos BGC
       
       real (kind=RKIND), dimension(:,:), intent(inout) :: &
@@ -194,11 +193,10 @@ contains
       type (mpas_pool_type), pointer :: seafloorStoragePool   ! additional forcing fields
       type (mpas_pool_type), pointer :: seafloorTracersPool   ! additional forcing fields
       type (mpas_pool_type), pointer :: benthosDiagFieldsLevel1Pool  ! diagnostics
-      type (mpas_pool_type), pointer :: ecosysDiagFieldsLevel1Pool, &
-                                        ecosysDiagFieldsLevel3Pool
-!                                        benthosDiagFieldsLevel3,  &
-!                                        benthosDiagFieldsLevel4,  &
-!                                        benthosDiagFieldsLevel5
+      type (mpas_pool_type), pointer :: ecosysBenthosForcingPool
+      type (mpas_pool_type), pointer :: oceanBenthosFluxPool
+      type (mpas_pool_type), pointer :: oceanBottomBenthosFieldsPool
+      type (mpas_pool_type), pointer :: oceanBenthosPrecipitationPool
 
       logical, pointer ::  &
          config_set_benthos_flags, &
@@ -216,12 +214,7 @@ contains
          config_use_ocean_conc, &
          config_use_deep_source, &
          config_use_constant_diffusivity, &
-         config_benthosTracers_diagnostic_fields_level1,  &
-         config_ecosysTracers_diagnostic_fields_level1,  &
-         config_ecosysTracers_diagnostic_fields_level3 !,  &
-!         config_benthosTracers_diagnostic_fields_level3,  &
-!         config_benthosTracers_diagnostic_fields_level4,  &
-!         config_benthosTracers_diagnostic_fields_level5
+         config_benthosTracers_diagnostic_fields_level1
 
       ! seafloorStorage
 
@@ -246,11 +239,57 @@ contains
          netElementsTend
 
       real (kind=RKIND), dimension(:,:), pointer :: &
-         ecosys_diag_calcToSed,      &
-         ecosys_diag_pocToSed,       &
-         ecosys_diag_ponToSed,       &
-         ecosys_diag_popToSed,       &
-         ecosys_diag_pfeToSed
+         benthos_calcToSed,      &
+         benthos_pocToSed,       &
+         benthos_ponToSed,       &
+         benthos_popToSed,       &
+         benthos_pfeToSed,       &
+         pressure
+
+      real (kind=RKIND), dimension(:), pointer :: &
+         oceanBottomBenthosSio3, &
+         oceanBottomBenthosPo4, &
+         oceanBottomBenthosNh4, &
+         oceanBottomBenthosNo3, &
+         oceanBottomBenthosO2, &
+         oceanBottomBenthosFe, &
+         oceanBottomBenthosCo2, &
+         oceanBottomBenthosMn, &
+         oceanBottomBenthosHco3, &
+         oceanBottomBenthosCo3, &
+         oceanBottomBenthosSo4, &
+         oceanBottomBenthosDIC, &
+         oceanBottomBenthosAlkalinity, &
+         oceanBottomBenthosTemperature, &
+         oceanBottomBenthosSalinity, &
+         oceanBottomBenthosDepth, &
+         oceanBottomBenthosPressure, &
+         oceanBottomBenthosDensity, &
+         oceanBenthosPOCaFlux, &
+         oceanBenthosPOPaFlux, &
+         oceanBenthosPONaFlux, &
+         oceanBenthosPOCbFlux, &
+         oceanBenthosPOPbFlux, &
+         oceanBenthosPONbFlux, &
+         oceanBenthosPOCcFlux, &
+         oceanBenthosPOPcFlux, &
+         oceanBenthosPONcFlux, &
+         oceanBenthos, &
+         oceanBenthosCaco3aFlux, &
+         oceanBenthosCaco3bFlux, &
+         oceanBenthosMgCaco3Flux, &
+         oceanBenthosMno2aFlux, &
+         oceanBenthosMno2bFlux, &
+         oceanBenthosFeoh3aFlux, &
+         oceanBenthosFeoh3bFlux, &
+         oceanBenthosFepaFlux, &
+         oceanBenthosFepbFlux, &
+         oceanBenthosPrecipMno2a, &
+         oceanBenthosPrecipMno2b, &
+         oceanBenthosPrecipFeoh3a, &
+         oceanBenthosPrecipFeoh3b, &
+         oceanBenthosPrecipFepa, &
+         oceanBenthosPrecipFepb
 
       real (kind=RKIND) :: convertLengthMKStoCGS = 100.0_RKIND
       real (kind=RKIND) :: convertLengthCGStoMKS = 0.01_RKIND
@@ -265,15 +304,18 @@ contains
       call mpas_timer_start("benthos source-sink")
 
       call mpas_pool_get_subpool(forcingPool, 'benthosAuxiliary', benthosAuxiliaryPool)
+      call mpas_pool_get_subpool(forcingPool, 'ecosysBenthosForcing', ecosysBenthosForcingPool)
+      call mpas_pool_get_subpool(forcingPool, 'oceanBenthosFlux', oceanBenthosFluxPool)
+      call mpas_pool_get_subpool(forcingPool, 'oceanBottomBenthosFields', oceanBottomBenthosFieldsPool)
+      call mpas_pool_get_subpool(forcingPool, 'oceanBenthosPrecipitation', oceanBenthosPrecipitationPool)
       call mpas_pool_get_subpool(statePool, 'seafloorStorage', seafloorStoragePool)
       call mpas_pool_get_subpool(statePool, 'seafloorTracers', seafloorTracersPool)
       call mpas_pool_get_subpool(diagnosticsPool, 'benthosDiagFieldsLevel1', benthosDiagFieldsLevel1Pool)
-      call mpas_pool_get_subpool(forcingPool, 'ecosysDiagFieldsLevel1', ecosysDiagFieldsLevel1Pool)
-      call mpas_pool_get_subpool(forcingPool, 'ecosysDiagFieldsLevel3', ecosysDiagFieldsLevel3Pool)
 
       call mpas_pool_get_config(ocnConfigs, 'config_set_benthos_flags',  config_set_benthos_flags)
       call mpas_pool_get_config(ocnConfigs, 'config_use_carbonate_saturation',  config_use_carbonate_saturation)
       call mpas_pool_get_config(ocnConfigs, 'config_use_secondary_reactions',  config_use_secondary_reactions)
+      call mpas_pool_get_config(ocnConfigs, 'config_use_ocean_conc',  config_use_ocean_conc)
       call mpas_pool_get_config(ocnConfigs, 'config_use_depth_dependent_porosity',  config_use_depth_dependent_porosity)
       call mpas_pool_get_config(ocnConfigs, 'config_use_non_zero_diffusivity',  config_use_non_zero_diffusivity)
       call mpas_pool_get_config(ocnConfigs, 'config_use_sedimentation',  config_use_sedimentation)
@@ -283,32 +325,68 @@ contains
       call mpas_pool_get_config(ocnConfigs, 'config_use_step_initial_profiles',  config_use_step_initial_profiles)
       call mpas_pool_get_config(ocnConfigs, 'config_use_benthic_reactions',  config_use_benthic_reactions)
       call mpas_pool_get_config(ocnConfigs, 'config_use_flux_correction',  config_use_flux_correction)
-      call mpas_pool_get_config(ocnConfigs, 'config_use_ocean_conc',  config_use_ocean_conc)
       call mpas_pool_get_config(ocnConfigs, 'config_use_deep_source',  config_use_deep_source)
       call mpas_pool_get_config(ocnConfigs, 'config_use_constant_diffusivity',  config_use_constant_diffusivity)
       call mpas_pool_get_config(ocnConfigs, 'config_benthosTracers_diagnostic_fields_level1', &
               config_benthosTracers_diagnostic_fields_level1)
-      call mpas_pool_get_config(ocnConfigs, 'config_ecosysTracers_diagnostic_fields_level1', &
-              config_ecosysTracers_diagnostic_fields_level1)
-      call mpas_pool_get_config(ocnConfigs, 'config_ecosysTracers_diagnostic_fields_level3', &
-              config_ecosysTracers_diagnostic_fields_level3)
 
-      if (config_ecosysTracers_diagnostic_fields_level1) then
-         call mpas_pool_get_array(ecosysDiagFieldsLevel1Pool, 'ecosys_diag_calcToSed', ecosys_diag_calcToSed)
-         call mpas_pool_get_array(ecosysDiagFieldsLevel1Pool, 'ecosys_diag_pocToSed', ecosys_diag_pocToSed)
-         call mpas_pool_get_array(ecosysDiagFieldsLevel1Pool, 'ecosys_diag_pfeToSed', ecosys_diag_pfeToSed)
-      end if
+      call mpas_pool_get_array(ecosysBenthosForcingPool, 'benthos_calcToSed', benthos_calcToSed)
+      call mpas_pool_get_array(ecosysBenthosForcingPool, 'benthos_pocToSed', benthos_pocToSed)
+      call mpas_pool_get_array(ecosysBenthosForcingPool, 'benthos_pfeToSed', benthos_pfeToSed)
+      call mpas_pool_get_array(ecosysBenthosForcingPool, 'benthos_popToSed', benthos_popToSed)
+      call mpas_pool_get_array(ecosysBenthosForcingPool, 'benthos_ponToSed', benthos_ponToSed)
+      call mpas_pool_get_array(diagnosticsPool, 'pressure', pressure)
 
-      if (config_ecosysTracers_diagnostic_fields_level3) then
-         call mpas_pool_get_array(ecosysDiagFieldsLevel3Pool, 'ecosys_diag_popToSed', ecosys_diag_popToSed)
-         call mpas_pool_get_array(ecosysDiagFieldsLevel3Pool, 'ecosys_diag_ponToSed', ecosys_diag_ponToSed)
-      end if
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosPOCaFlux', oceanBenthosPOCaFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosPOPaFlux', oceanBenthosPOPaFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosPONaFlux', oceanBenthosPONaFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosPOCbFlux', oceanBenthosPOCbFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosPOPbFlux', oceanBenthosPOPbFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosPONcFlux', oceanBenthosPONcFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosPOCcFlux', oceanBenthosPOCcFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosPOPcFlux', oceanBenthosPOPcFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosPONcFlux', oceanBenthosPONcFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosCaco3aFlux', oceanBenthosCaco3aFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosCaco3bFlux', oceanBenthosCaco3bFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosMgCaco3Flux', oceanBenthosMgCaco3Flux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosMno2aFlux', oceanBenthosMno2aFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosMno2bFlux', oceanBenthosMno2bFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosFeoh3aFlux', oceanBenthosFeoh3aFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosFeoh3bFlux', oceanBenthosFeoh3bFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosFepaFlux', oceanBenthosFepaFlux)
+      call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosFepbFlux', oceanBenthosFepbFlux)
+
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosSio3', oceanBottomBenthosSio3)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosPo4', oceanBottomBenthosPo4)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosNh4', oceanBottomBenthosNh4)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosNo3', oceanBottomBenthosNo3)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosO2', oceanBottomBenthosO2)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosFe', oceanBottomBenthosFe)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosCo2', oceanBottomBenthosCo2)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosMn', oceanBottomBenthosMn)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosHco3', oceanBottomBenthosHco3)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosCo3', oceanBottomBenthosCo3)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosSo4', oceanBottomBenthosSo4)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosDIC', oceanBottomBenthosDIC)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosAlkalinity', oceanBottomBenthosAlkalinity)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosTemperature', oceanBottomBenthosTemperature)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosSalinity', oceanBottomBenthosSalinity)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosPressure', oceanBottomBenthosPressure)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosDensity', oceanBottomBenthosDensity)
+      call mpas_pool_get_array(oceanBottomBenthosFieldsPool, 'oceanBottomBenthosDepth', oceanBottomBenthosDepth)
+
+      call mpas_pool_get_array(oceanBenthosPrecipitationPool, 'oceanBenthosPrecipMno2a', oceanBenthosPrecipMno2a)
+      call mpas_pool_get_array(oceanBenthosPrecipitationPool, 'oceanBenthosPrecipMno2b', oceanBenthosPrecipMno2b)
+      call mpas_pool_get_array(oceanBenthosPrecipitationPool, 'oceanBenthosPrecipFeoh3a', oceanBenthosPrecipFeoh3a)
+      call mpas_pool_get_array(oceanBenthosPrecipitationPool, 'oceanBenthosPrecipFeoh3b', oceanBenthosPrecipFeoh3b)
+      call mpas_pool_get_array(oceanBenthosPrecipitationPool, 'oceanBenthosPrecipFepa', oceanBenthosPrecipFepa)
+      call mpas_pool_get_array(oceanBenthosPrecipitationPool, 'oceanBenthosPrecipFepb', oceanBenthosPrecipFepb)
 
 !      call mpas_log_write('after ocnConfigs',MPAS_LOG_ERR)
 
       if (config_benthosTracers_diagnostic_fields_level1) then
 
-         call mpas_log_write('config_benthosTracers_diagnostic_fields_level1 = true')
+!         call mpas_log_write('config_benthosTracers_diagnostic_fields_level1 = true')
 
          call mpas_pool_get_array(benthosDiagFieldsLevel1Pool, 'netBenthosReactionTend', netBenthosReactionTend)
          call mpas_pool_get_array(benthosDiagFieldsLevel1Pool, 'netBenthosTransportTend', netBenthosTransportTend)
@@ -332,29 +410,41 @@ contains
 
       numColumns = 1
       column = 1
-      !DWJ 08/05/2016: This loop needs OpenMP added to it.
+!     DWJ 08/05/2016: This loop needs OpenMP added to it.
+      
       do iCell=1,nCellsSolve
          benthos_input%bottom_level(column) = maxLevelCell(iCell)
          maxLevel = maxLevelCell(iCell)
          benthos_input%oceanBottomDensity(column) = density(maxLevel,iCell)
          benthos_input%oceanBottomDepth(column) =  bottomDepth(iCell)
+         benthos_input%oceanBottomPressure(column) =  pressure(maxLevel,iCell)
          benthos_input%oceanBottomTemperature(column) = activeTracers(indexTemperature, maxLevel, iCell)
-         benthos_input%oceanBottomSalinity(column) = activeTracers(indexSalinity, maxLevel, iCell)         
+         benthos_input%oceanBottomSalinity(column) = activeTracers(indexSalinity, maxLevel, iCell)
+         !! ecosys fields below are only used if config_use_ocean_conc = true !!
+         !! fields used by the benthos model are written to benthos_output%oceanBottomSilicate !!         
          benthos_input%oceanBottomSilicate(column) = ecosysTracers(ecosysBenthosIndices%sio3_ind, maxLevel, iCell)
          benthos_input%oceanBottomPhosphate(column) = ecosysTracers(ecosysBenthosIndices%po4_ind, maxLevel, iCell)
          benthos_input%oceanBottomAmmonium(column) = ecosysTracers(ecosysBenthosIndices%nh4_ind, maxLevel, iCell)
          benthos_input%oceanBottomNitrate(column) = ecosysTracers(ecosysBenthosIndices%no3_ind, maxLevel, iCell)
+
+!     This is negative often but we won't use these fields
+!         config_use_ocean_conc = .false.
+!
+!            if ( benthos_input%oceanBottomNitrate(column) .lt. 0.0_RKIND) then
+!                call mpas_log_write('ecosysTracers(ecosysBenthosIndices%no3_ind,maxLevel,iCell): $r',MPAS_LOG_ERR,realArgs=(/ecosysTracers(ecosysBenthosIndices%no3_ind,maxLevel,iCell)/))
+!                call mpas_log_write('ecosysBenthosIndices%no3_ind: $i',MPAS_LOG_ERR,intArgs=(/ecosysBenthosIndices%no3_ind/))
+!                call mpas_log_write('maxLevel: $i',MPAS_LOG_ERR,intArgs=(/maxLevel/))
+!                call mpas_log_write('iCell: $i',MPAS_LOG_ERR,intArgs=(/iCell/))
+!            end if
          benthos_input%oceanBottomOxygen(column) = ecosysTracers(ecosysBenthosIndices%o2_ind, maxLevel, iCell)
          benthos_input%oceanBottomIron(column) = ecosysTracers(ecosysBenthosIndices%fe_ind, maxLevel, iCell)
          benthos_input%oceanBottomDIC(column) = ecosysTracers(ecosysBenthosIndices%dic_ind, maxLevel, iCell)
          benthos_input%oceanBottomAlkalinity(column) = ecosysTracers(ecosysBenthosIndices%alk_ind, maxLevel, iCell)
-
-         benthos_input%oceanPOCFlux(column) = BGC_diagnostic_fields%diag_pocToSed(maxLevel,column)*convertLengthCGStoMKS  !g/cm2/s to kg/m2/s
-         benthos_input%oceanPONFlux(column) = BGC_diagnostic_fields%diag_ponToSed(maxLevel,column)*convertLengthCGStoMKS
-         benthos_input%oceanPOPFlux(column) = BGC_diagnostic_fields%diag_popToSed(maxLevel,column)*convertLengthCGStoMKS
-         benthos_input%oceanParticulateIronFlux(column) = BGC_diagnostic_fields%diag_pfeToSed(maxLevel,column)*convertLengthCGStoMKS
-         benthos_input%oceanCalciteFlux(column) = BGC_diagnostic_fields%diag_calcToSed(maxLevel,column)*convertLengthCGStoMKS
-
+         benthos_input%oceanPOCFlux(column) = benthos_pocToSed(maxLevel,iCell)
+         benthos_input%oceanParticulateIronFlux(column) = benthos_pfeToSed(maxLevel,iCell)
+         benthos_input%oceanCalciteFlux(column) = benthos_calcToSed(maxLevel,iCell)
+         benthos_input%oceanPONFlux(column) = benthos_ponToSed(maxLevel,iCell)
+         benthos_input%oceanPOPFlux(column) = benthos_popToSed(maxLevel,iCell)
          benthos_input%deepStorage(column,benthos_indices%poca_ind) = benthosTracersStorage(benthosIndices%poca_ind,iCell)
          benthos_input%deepStorage(column,benthos_indices%pocb_ind) = benthosTracersStorage(benthosIndices%pocb_ind,iCell)
          benthos_input%deepStorage(column,benthos_indices%pocc_ind) = benthosTracersStorage(benthosIndices%pocc_ind,iCell)
@@ -391,479 +481,492 @@ contains
          benthos_input%deepStorage(column,benthos_indices%co3_ind) = benthosTracersStorage(benthosIndices%co3_ind,iCell)
          benthos_input%deepStorage(column,benthos_indices%camgco3_ind) = benthosTracersStorage(benthosIndices%camgco3_ind,iCell)
 
-          do iLevel=1,nBenthicVertLevels+1
-!             call mpas_log_write('3d benthos_input: iLevel: $i',MPAS_LOG_ERR,intArgs=(/iLevel/))
-!             call mpas_log_write('column: $i',MPAS_LOG_ERR,intArgs=(/column/))
-             benthos_input%PH_PREV_3D(iLevel,column) = benthosPhPrev3d(iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%poca_ind) = benthosTracers(benthosIndices%poca_ind,iLevel,iCell)
+         do iLevel=1,nBenthicVertLevels+1
+            benthos_input%PH_PREV_3D(iLevel,column) = benthosPhPrev3d(iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%poca_ind) = benthosTracers(benthosIndices%poca_ind,iLevel,iCell)
              
 !             call mpas_log_write('3d benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%poca_ind): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%poca_ind)/))
 
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%pocb_ind) = benthosTracers(benthosIndices%pocb_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%pocc_ind) = benthosTracers(benthosIndices%pocc_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%pona_ind) = benthosTracers(benthosIndices%pona_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%ponb_ind) = benthosTracers(benthosIndices%ponb_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%ponc_ind) = benthosTracers(benthosIndices%ponc_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%popa_ind) = benthosTracers(benthosIndices%popa_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%popb_ind) = benthosTracers(benthosIndices%popb_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%popc_ind) = benthosTracers(benthosIndices%popc_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%o2_ind) = benthosTracers(benthosIndices%o2_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%nh4_ind) = benthosTracers(benthosIndices%nh4_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%h2po4_ind) = benthosTracers(benthosIndices%h2po4_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%co2_ind) = benthosTracers(benthosIndices%co2_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%no3_ind) = benthosTracers(benthosIndices%no3_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%mno2a_ind) = benthosTracers(benthosIndices%mno2a_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%mno2b_ind) = benthosTracers(benthosIndices%mno2b_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%mn_ind) = benthosTracers(benthosIndices%mn_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%feoh3a_ind) = benthosTracers(benthosIndices%feoh3a_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%feoh3b_ind) = benthosTracers(benthosIndices%feoh3b_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%fe_ind) = benthosTracers(benthosIndices%fe_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%fepa_ind) = benthosTracers(benthosIndices%fepa_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%fepb_ind) = benthosTracers(benthosIndices%fepb_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%so4_ind) = benthosTracers(benthosIndices%so4_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%h2s_ind) = benthosTracers(benthosIndices%h2s_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%ch4_ind) = benthosTracers(benthosIndices%ch4_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%dic_ind) = benthosTracers(benthosIndices%dic_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%alk_ind) = benthosTracers(benthosIndices%alk_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%hco3_ind) = benthosTracers(benthosIndices%hco3_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%fes_ind) = benthosTracers(benthosIndices%fes_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%fes2_ind) = benthosTracers(benthosIndices%fes2_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%s_ind) = benthosTracers(benthosIndices%s_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%caco3a_ind) = benthosTracers(benthosIndices%caco3a_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%caco3b_ind) = benthosTracers(benthosIndices%caco3b_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%co3_ind) = benthosTracers(benthosIndices%co3_ind,iLevel,iCell)
-             benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%camgco3_ind) = benthosTracers(benthosIndices%camgco3_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%pocb_ind) = benthosTracers(benthosIndices%pocb_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%pocc_ind) = benthosTracers(benthosIndices%pocc_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%pona_ind) = benthosTracers(benthosIndices%pona_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%ponb_ind) = benthosTracers(benthosIndices%ponb_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%ponc_ind) = benthosTracers(benthosIndices%ponc_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%popa_ind) = benthosTracers(benthosIndices%popa_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%popb_ind) = benthosTracers(benthosIndices%popb_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%popc_ind) = benthosTracers(benthosIndices%popc_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%o2_ind) = benthosTracers(benthosIndices%o2_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%nh4_ind) = benthosTracers(benthosIndices%nh4_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%h2po4_ind) = benthosTracers(benthosIndices%h2po4_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%co2_ind) = benthosTracers(benthosIndices%co2_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%no3_ind) = benthosTracers(benthosIndices%no3_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%mno2a_ind) = benthosTracers(benthosIndices%mno2a_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%mno2b_ind) = benthosTracers(benthosIndices%mno2b_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%mn_ind) = benthosTracers(benthosIndices%mn_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%feoh3a_ind) = benthosTracers(benthosIndices%feoh3a_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%feoh3b_ind) = benthosTracers(benthosIndices%feoh3b_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%fe_ind) = benthosTracers(benthosIndices%fe_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%fepa_ind) = benthosTracers(benthosIndices%fepa_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%fepb_ind) = benthosTracers(benthosIndices%fepb_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%so4_ind) = benthosTracers(benthosIndices%so4_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%h2s_ind) = benthosTracers(benthosIndices%h2s_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%ch4_ind) = benthosTracers(benthosIndices%ch4_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%dic_ind) = benthosTracers(benthosIndices%dic_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%alk_ind) = benthosTracers(benthosIndices%alk_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%hco3_ind) = benthosTracers(benthosIndices%hco3_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%fes_ind) = benthosTracers(benthosIndices%fes_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%fes2_ind) = benthosTracers(benthosIndices%fes2_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%s_ind) = benthosTracers(benthosIndices%s_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%caco3a_ind) = benthosTracers(benthosIndices%caco3a_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%caco3b_ind) = benthosTracers(benthosIndices%caco3b_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%co3_ind) = benthosTracers(benthosIndices%co3_ind,iLevel,iCell)
+            benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%camgco3_ind) = benthosTracers(benthosIndices%camgco3_ind,iLevel,iCell)
+         end do
+         call benthos_SourceSink(benthos_input, benthos_forcing, benthos_indices, &
+            benthos_output, benthos_diagnostic_fields, nBenthicVertLevels, &
+            numBenthicColumnsMax,dt,err)
 
-          end do ! iLevel
+         ! don't update fields.... just define the tendencies...
+         benthosTracersStorage(benthosIndices%poca_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%poca_ind)
+         benthosTracersStorage(benthosIndices%pocb_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%pocb_ind) 
+         benthosTracersStorage(benthosIndices%pocc_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%pocc_ind)
+         benthosTracersStorage(benthosIndices%pona_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%pona_ind) 
+         benthosTracersStorage(benthosIndices%ponb_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%ponb_ind) 
+         benthosTracersStorage(benthosIndices%ponc_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%ponc_ind) 
+         benthosTracersStorage(benthosIndices%popa_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%popa_ind) 
+         benthosTracersStorage(benthosIndices%popb_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%popb_ind) 
+         benthosTracersStorage(benthosIndices%popc_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%popc_ind) 
+         benthosTracersStorage(benthosIndices%o2_ind,iCell) =  benthos_input%deepStorage(column,benthos_indices%o2_ind)
+         benthosTracersStorage(benthosIndices%nh4_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%nh4_ind)
+         benthosTracersStorage(benthosIndices%h2po4_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%h2po4_ind) 
+         benthosTracersStorage(benthosIndices%co2_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%co2_ind)
+         benthosTracersStorage(benthosIndices%no3_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%no3_ind)
+         benthosTracersStorage(benthosIndices%mno2a_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%mno2a_ind)
+         benthosTracersStorage(benthosIndices%mno2b_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%mno2b_ind)
+         benthosTracersStorage(benthosIndices%mn_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%mn_ind)
+         benthosTracersStorage(benthosIndices%feoh3a_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%feoh3a_ind)
+         benthosTracersStorage(benthosIndices%feoh3b_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%feoh3b_ind)
+         benthosTracersStorage(benthosIndices%fe_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%fe_ind)
+         benthosTracersStorage(benthosIndices%fepa_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%fepa_ind) 
+         benthosTracersStorage(benthosIndices%fepb_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%fepb_ind)
+         benthosTracersStorage(benthosIndices%so4_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%so4_ind)
+         benthosTracersStorage(benthosIndices%h2s_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%h2s_ind)
+         benthosTracersStorage(benthosIndices%ch4_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%ch4_ind)
+         benthosTracersStorage(benthosIndices%dic_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%dic_ind)
+         benthosTracersStorage(benthosIndices%alk_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%alk_ind)
+         benthosTracersStorage(benthosIndices%hco3_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%hco3_ind)
+         benthosTracersStorage(benthosIndices%fes_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%fes_ind)
+         benthosTracersStorage(benthosIndices%fes2_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%fes2_ind)
+         benthosTracersStorage(benthosIndices%s_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%s_ind)
+         benthosTracersStorage(benthosIndices%caco3a_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%caco3a_ind)
+         benthosTracersStorage(benthosIndices%caco3b_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%caco3b_ind)
+         benthosTracersStorage(benthosIndices%co3_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%co3_ind)
+         benthosTracersStorage(benthosIndices%camgco3_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%camgco3_ind)
 
-          call benthos_SourceSink(benthos_input, benthos_forcing, &
-                             benthos_output, benthos_diagnostic_fields, nBenthicVertLevels, &
-                             numBenthicColumnsMax,dt,err)
+         oceanBottomBenthosSio3(iCell) = benthos_output%oceanBottomSilicate(column)
+         oceanBottomBenthosPo4(iCell) = benthos_output%oceanBottomPhosphate(column)
+         oceanBottomBenthosNh4(iCell) = benthos_output%oceanBottomAmmonium(column)
+         oceanBottomBenthosNo3(iCell) = benthos_output%oceanBottomNitrate(column)
+         oceanBottomBenthosO2(iCell) = benthos_output%oceanBottomOxygen(column)
+         oceanBottomBenthosFe(iCell) = benthos_output%oceanBottomIron(column)
+         oceanBottomBenthosCo2(iCell) = benthos_output%oceanBottomCarbonDioxide(column)
+         oceanBottomBenthosMn(iCell) = benthos_output%oceanBottomManganese(column)
+         oceanBottomBenthosHco3(iCell) = benthos_output%oceanBottomBicarbonate(column)
+         oceanBottomBenthosCo3(iCell) = benthos_output%oceanBottomCarbonate(column)
+         oceanBottomBenthosSo4(iCell) = benthos_output%oceanBottomSulfate(column)
+         oceanBottomBenthosDIC(iCell) = benthos_output%oceanBottomDIC(column)
+         oceanBottomBenthosAlkalinity(iCell) = benthos_output%oceanBottomAlkalinity(column)
 
-          benthosTracersTend(:,:,:) = 0.0_RKIND
+         oceanBottomBenthosTemperature(iCell) = benthos_output%oceanBottomTemperature(column)
+         oceanBottomBenthosSalinity(iCell) = benthos_output%oceanBottomSalinity(column)
+         oceanBottomBenthosDensity(iCell) = benthos_output%oceanBottomDensity(column)
+         oceanBottomBenthosPressure(iCell) = benthos_output%oceanBottomPressure(column)
+         oceanBottomBenthosDepth(iCell) = benthos_output%oceanBottomDepth(column)
+      
+         oceanBenthosPOCaFlux(iCell) = benthos_output%oceanPOCaFlux(column)
+         oceanBenthosPOPaFlux(iCell) = benthos_output%oceanPOPaFlux(column)
+         oceanBenthosPONaFlux(iCell) = benthos_output%oceanPONaFlux(column)
+         oceanBenthosPOCbFlux(iCell) = benthos_output%oceanPOCbFlux(column)
+         oceanBenthosPOPbFlux(iCell) = benthos_output%oceanPOPbFlux(column)
+         oceanBenthosPONbFlux(iCell) = benthos_output%oceanPONbFlux(column)
+         oceanBenthosPOCcFlux(iCell) = benthos_output%oceanPOCcFlux(column)
+         oceanBenthosPOPcFlux(iCell) = benthos_output%oceanPOPcFlux(column)
+         oceanBenthosPONcFlux(iCell) = benthos_output%oceanPONcFlux(column)
+         oceanBenthosCaco3aFlux(iCell) = benthos_output%oceanCalciteFlux(column)
+         oceanBenthosCaco3bFlux(iCell) = benthos_output%oceanAragoniteFlux(column)
+         oceanBenthosMgCaco3Flux(iCell) = benthos_output%oceanMgCalciteFlux(column)
+         oceanBenthosMno2aFlux(iCell) = benthos_output%oceanManganeseOxideaFlux(column)
+         oceanBenthosMno2bFlux(iCell) = benthos_output%oceanManganeseOxidebFlux(column)
+         oceanBenthosFeoh3aFlux(iCell) = benthos_output%oceanIronOxyhydroxideaFlux(column)
+         oceanBenthosFeoh3bFlux(iCell) = benthos_output%oceanIronOxyhydroxidebFlux(column)
+         oceanBenthosFepaFlux(iCell) = benthos_output%oceanIronBoundPhosphorusaFlux(column)
+         oceanBenthosFepbFlux(iCell) = benthos_output%oceanIronBoundPhosphorusbFlux(column)
+         
+         oceanBenthosPrecipMno2a(iCell) = benthos_output%oceanPrecipManganeseOxidea(column)
+         oceanBenthosPrecipMno2b(iCell) = benthos_output%oceanPrecipManganeseOxideb(column)
+         oceanBenthosPrecipFeoh3a(iCell) = benthos_output%oceanPrecipIronOxyhydroxidea(column)
+         oceanBenthosPrecipFeoh3b(iCell) = benthos_output%oceanPrecipIronOxyhydroxideb(column)
+         oceanBenthosPrecipFepa(iCell) = benthos_output%oceanPrecipIronBoundPhosphorusa(column)
+         oceanBenthosPrecipFepb(iCell) = benthos_output%oceanPrecipIronBoundPhosphorusb(column)
 
-          benthosTracersStorage(benthosIndices%poca_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%poca_ind)
-          benthosTracersStorage(benthosIndices%pocb_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%pocb_ind) 
-          benthosTracersStorage(benthosIndices%pocc_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%pocc_ind)
-          benthosTracersStorage(benthosIndices%pona_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%pona_ind) 
-          benthosTracersStorage(benthosIndices%ponb_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%ponb_ind) 
-          benthosTracersStorage(benthosIndices%ponc_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%ponc_ind) 
-          benthosTracersStorage(benthosIndices%popa_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%popa_ind) 
-          benthosTracersStorage(benthosIndices%popb_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%popb_ind) 
-          benthosTracersStorage(benthosIndices%popc_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%popc_ind) 
-          benthosTracersStorage(benthosIndices%o2_ind,iCell) =  benthos_input%deepStorage(column,benthos_indices%o2_ind)
-          benthosTracersStorage(benthosIndices%nh4_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%nh4_ind)
-          benthosTracersStorage(benthosIndices%h2po4_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%h2po4_ind) 
-          benthosTracersStorage(benthosIndices%co2_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%co2_ind)
-          benthosTracersStorage(benthosIndices%no3_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%no3_ind)
-          benthosTracersStorage(benthosIndices%mno2a_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%mno2a_ind)
-          benthosTracersStorage(benthosIndices%mno2b_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%mno2b_ind)
-          benthosTracersStorage(benthosIndices%mn_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%mn_ind)
-          benthosTracersStorage(benthosIndices%feoh3a_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%feoh3a_ind)
-          benthosTracersStorage(benthosIndices%feoh3b_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%feoh3b_ind)
-          benthosTracersStorage(benthosIndices%fe_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%fe_ind)
-          benthosTracersStorage(benthosIndices%fepa_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%fepa_ind) 
-          benthosTracersStorage(benthosIndices%fepb_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%fepb_ind)
-          benthosTracersStorage(benthosIndices%so4_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%so4_ind)
-          benthosTracersStorage(benthosIndices%h2s_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%h2s_ind)
-          benthosTracersStorage(benthosIndices%ch4_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%ch4_ind)
-          benthosTracersStorage(benthosIndices%dic_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%dic_ind)
-          benthosTracersStorage(benthosIndices%alk_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%alk_ind)
-          benthosTracersStorage(benthosIndices%hco3_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%hco3_ind)
-          benthosTracersStorage(benthosIndices%fes_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%fes_ind)
-          benthosTracersStorage(benthosIndices%fes2_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%fes2_ind)
-          benthosTracersStorage(benthosIndices%s_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%s_ind)
-          benthosTracersStorage(benthosIndices%caco3a_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%caco3a_ind)
-          benthosTracersStorage(benthosIndices%caco3b_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%caco3b_ind)
-          benthosTracersStorage(benthosIndices%co3_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%co3_ind)
-          benthosTracersStorage(benthosIndices%camgco3_ind,iCell) = benthos_input%deepStorage(column,benthos_indices%camgco3_ind)
-
+         if (oceanBottomBenthosDepth(iCell) .lt. 50.0_RKIND .and.  &
+            oceanBottomBenthosTemperature(iCell) .lt. 0.0_RKIND) then
+            call mpas_log_write('iCell: $i',MPAS_LOG_ERR,intArgs=(/iCell/))
+            call mpas_log_write('oceanBottomBenthosDepth(iCell): $r',MPAS_LOG_ERR,realArgs=(/oceanBottomBenthosDepth(iCell)/))
+            call mpas_log_write('oceanBottomBenthosTemperature(iCell): $r',MPAS_LOG_ERR,realArgs=(/oceanBottomBenthosTemperature(iCell)/))
+            call mpas_log_write('maxLevel: $i',MPAS_LOG_ERR,intArgs=(/maxLevel/))
+            call mpas_log_write('iCell: $i',MPAS_LOG_ERR,intArgs=(/iCell/))
+         end if
          do iLevel=1,nBenthicVertLevels+1
 
-             benthosPhPrev3d(iLevel,iCell) = benthos_input%PH_PREV_3D(iLevel,column)
-             benthosTracers(benthosIndices%poca_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%poca_ind)
-             benthosTracers(benthosIndices%pocb_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%pocb_ind)
-             benthosTracers(benthosIndices%pocc_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%pocc_ind)
-             benthosTracers(benthosIndices%pona_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%pona_ind)
-             benthosTracers(benthosIndices%ponb_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%ponb_ind)
-             benthosTracers(benthosIndices%ponc_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%ponc_ind)
-             benthosTracers(benthosIndices%popa_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%popa_ind)
-             benthosTracers(benthosIndices%popb_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%popb_ind)
-             benthosTracers(benthosIndices%popc_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%popc_ind)
-             benthosTracers(benthosIndices%o2_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%o2_ind)
-             benthosTracers(benthosIndices%nh4_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%nh4_ind)
-             benthosTracers(benthosIndices%h2po4_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%h2po4_ind)
-             benthosTracers(benthosIndices%co2_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%co2_ind)
-             benthosTracers(benthosIndices%no3_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%no3_ind)
-             benthosTracers(benthosIndices%mno2a_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%mno2a_ind)
-             benthosTracers(benthosIndices%mno2b_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%mno2b_ind)
-             benthosTracers(benthosIndices%mn_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%mn_ind)
-             benthosTracers(benthosIndices%feoh3a_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%feoh3a_ind)
-             benthosTracers(benthosIndices%feoh3b_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%feoh3b_ind)
-             benthosTracers(benthosIndices%fe_ind,iLevel,iCell) =  benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%fe_ind)
-             benthosTracers(benthosIndices%fepa_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%fepa_ind)
-             benthosTracers(benthosIndices%fepb_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%fepb_ind)
-             benthosTracers(benthosIndices%so4_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%so4_ind)
-             benthosTracers(benthosIndices%h2s_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%h2s_ind)
-             benthosTracers(benthosIndices%ch4_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%ch4_ind)
-             benthosTracers(benthosIndices%dic_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%dic_ind)
-             benthosTracers(benthosIndices%alk_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%alk_ind)
-             benthosTracers(benthosIndices%hco3_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%hco3_ind)
-             benthosTracers(benthosIndices%fes_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%fes_ind)
-             benthosTracers(benthosIndices%fes2_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%fes2_ind)
-             benthosTracers(benthosIndices%s_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%s_ind)
-             benthosTracers(benthosIndices%caco3a_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%caco3a_ind)
-             benthosTracers(benthosIndices%caco3b_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%caco3b_ind)
-             benthosTracers(benthosIndices%co3_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%co3_ind)
-             benthosTracers(benthosIndices%camgco3_ind,iLevel,iCell) = benthos_input%benthosTracerBulk(iLevel,column,benthos_indices%camgco3_ind)
-
+            benthosPhPrev3d(iLevel,iCell) = benthos_input%PH_PREV_3D(iLevel,column)
             benthosTracersTend(benthosIndices%poca_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%poca_ind,iLevel,iCell)   &
+            benthosTracersTend(benthosIndices%poca_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%poca_ind)*benthosInterfaceLayerThickness(iLevel)
             benthosTracersTend(benthosIndices%pocb_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%pocb_ind,iLevel,iCell)   &
+            benthosTracersTend(benthosIndices%pocb_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%pocb_ind)*benthosInterfaceLayerThickness(iLevel)
             benthosTracersTend(benthosIndices%pocc_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%pocc_ind,iLevel,iCell)   &
+            benthosTracersTend(benthosIndices%pocc_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%pocc_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%pona_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%pona_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%pona_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%pona_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%pona_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%ponb_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%ponb_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%ponb_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%ponb_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%ponb_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%ponc_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%ponc_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%ponc_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%ponc_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%ponc_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%popa_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%popa_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%popa_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%popa_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%popa_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%popb_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%popb_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%popb_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%popb_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%popb_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%popc_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%popc_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%popc_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%popc_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%popc_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%o2_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%o2_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%o2_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%o2_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%o2_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%nh4_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%nh4_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%nh4_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%nh4_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%nh4_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%h2po4_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%h2po4_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%h2po4_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%h2po4_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%h2po4_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%co2_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%co2_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%co2_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%co2_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%co2_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%no3_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%no3_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%no3_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%no3_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%no3_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%mno2a_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%mno2a_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%mno2a_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%mno2a_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%mno2a_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%mno2b_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%mno2b_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%mno2b_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%mno2b_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%mno2b_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%mn_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%mn_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%mn_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%mn_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%mn_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%feoh3a_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%feoh3a_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%feoh3a_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%feoh3a_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%feoh3a_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%feoh3b_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%feoh3b_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%feoh3b_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%feoh3b_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%feoh3b_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%fe_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%fe_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%fe_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%fe_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%fe_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%fepa_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%fepa_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%fepa_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%fepa_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%fepa_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%fepb_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%fepb_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%fepb_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%fepb_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%fepb_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%so4_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%so4_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%so4_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%so4_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%so4_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%h2s_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%h2s_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%h2s_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%h2s_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%h2s_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%ch4_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%ch4_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%ch4_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%ch4_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%ch4_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%hco3_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%hco3_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%hco3_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%hco3_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%hco3_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%fes_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%fes_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%fes_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%fes_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%fes_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%fes2_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%fes2_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%fes2_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%fes2_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%fes2_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%s_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%s_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%s_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%s_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%s_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%caco3a_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%caco3a_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%caco3a_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%caco3a_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%caco3a_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%caco3b_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%caco3b_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%caco3b_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%caco3b_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%caco3b_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%co3_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%co3_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%co3_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%co3_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%co3_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%camgco3_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%camgco3_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%camgco3_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%camgco3_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%camgco3_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%dic_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%dic_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%dic_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%dic_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%dic_ind)*benthosInterfaceLayerThickness(iLevel)
-            benthosTracersTend(benthosIndices%alk_ind,iLevel,iCell) =  &
-               benthosTracersTend(benthosIndices%alk_ind,iLevel,iCell)   &
+           benthosTracersTend(benthosIndices%alk_ind,iLevel,iCell) =  &
+           benthosTracersTend(benthosIndices%alk_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%alk_ind)*benthosInterfaceLayerThickness(iLevel)
 
-            end do
-            !
-            ! level 1 diagnostics
-            !
+         end do
+         !
+         ! level 1 diagnostics
+         !
 
-            if (config_benthosTracers_diagnostic_fields_level1) then
-                netBenthosReactionTend(benthosIndices%poca_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%poca_ind)
-                netBenthosReactionTend(benthosIndices%pocb_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%pocb_ind)
-                netBenthosReactionTend(benthosIndices%pocc_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%pocc_ind)
-                netBenthosReactionTend(benthosIndices%pona_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%pona_ind)
-                netBenthosReactionTend(benthosIndices%ponb_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%ponb_ind)
-                netBenthosReactionTend(benthosIndices%ponc_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%ponc_ind)
-                netBenthosReactionTend(benthosIndices%popa_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%popa_ind)
-                netBenthosReactionTend(benthosIndices%popb_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%popb_ind)
-                netBenthosReactionTend(benthosIndices%popc_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%popc_ind)
-                netBenthosReactionTend(benthosIndices%o2_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%o2_ind)
-                netBenthosReactionTend(benthosIndices%nh4_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%nh4_ind)
-                netBenthosReactionTend(benthosIndices%h2po4_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%h2po4_ind)
-                netBenthosReactionTend(benthosIndices%co2_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%co2_ind)
-                netBenthosReactionTend(benthosIndices%no3_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%no3_ind)
-                netBenthosReactionTend(benthosIndices%mno2a_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%mno2a_ind)
-                netBenthosReactionTend(benthosIndices%mno2b_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%mno2b_ind)
-                netBenthosReactionTend(benthosIndices%mn_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%mn_ind)
-                netBenthosReactionTend(benthosIndices%feoh3a_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%feoh3a_ind)
-                netBenthosReactionTend(benthosIndices%feoh3b_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%feoh3b_ind)
-                netBenthosReactionTend(benthosIndices%fe_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%fe_ind)
-                netBenthosReactionTend(benthosIndices%fepa_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%fepa_ind)
-                netBenthosReactionTend(benthosIndices%fepb_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%fepb_ind)
-                netBenthosReactionTend(benthosIndices%so4_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%so4_ind)
-                netBenthosReactionTend(benthosIndices%h2s_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%h2s_ind)
-                netBenthosReactionTend(benthosIndices%ch4_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%ch4_ind)
-                netBenthosReactionTend(benthosIndices%hco3_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%hco3_ind)
-                netBenthosReactionTend(benthosIndices%fes_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%fes_ind)
-                netBenthosReactionTend(benthosIndices%fes2_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%fes2_ind)
-                netBenthosReactionTend(benthosIndices%s_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%s_ind)
-                netBenthosReactionTend(benthosIndices%caco3a_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%caco3a_ind)
-                netBenthosReactionTend(benthosIndices%caco3b_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%caco3b_ind)
-                netBenthosReactionTend(benthosIndices%co3_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%co3_ind)
-                netBenthosReactionTend(benthosIndices%camgco3_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%camgco3_ind)
-                netBenthosReactionTend(benthosIndices%dic_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%dic_ind)
-                netBenthosReactionTend(benthosIndices%alk_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%alk_ind)
+         if (config_benthosTracers_diagnostic_fields_level1) then
+            netBenthosReactionTend(benthosIndices%poca_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%poca_ind)
+            netBenthosReactionTend(benthosIndices%pocb_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%pocb_ind)
+            netBenthosReactionTend(benthosIndices%pocc_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%pocc_ind)
+            netBenthosReactionTend(benthosIndices%pona_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%pona_ind)
+            netBenthosReactionTend(benthosIndices%ponb_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%ponb_ind)
+            netBenthosReactionTend(benthosIndices%ponc_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%ponc_ind)
+            netBenthosReactionTend(benthosIndices%popa_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%popa_ind)
+            netBenthosReactionTend(benthosIndices%popb_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%popb_ind)
+            netBenthosReactionTend(benthosIndices%popc_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%popc_ind)
+            netBenthosReactionTend(benthosIndices%o2_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%o2_ind)
+            netBenthosReactionTend(benthosIndices%nh4_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%nh4_ind)
+            netBenthosReactionTend(benthosIndices%h2po4_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%h2po4_ind)
+            netBenthosReactionTend(benthosIndices%co2_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%co2_ind)
+            netBenthosReactionTend(benthosIndices%no3_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%no3_ind)
+            netBenthosReactionTend(benthosIndices%mno2a_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%mno2a_ind)
+            netBenthosReactionTend(benthosIndices%mno2b_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%mno2b_ind)
+            netBenthosReactionTend(benthosIndices%mn_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%mn_ind)
+            netBenthosReactionTend(benthosIndices%feoh3a_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%feoh3a_ind)
+            netBenthosReactionTend(benthosIndices%feoh3b_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%feoh3b_ind)
+            netBenthosReactionTend(benthosIndices%fe_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%fe_ind)
+            netBenthosReactionTend(benthosIndices%fepa_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%fepa_ind)
+            netBenthosReactionTend(benthosIndices%fepb_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%fepb_ind)
+            netBenthosReactionTend(benthosIndices%so4_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%so4_ind)
+            netBenthosReactionTend(benthosIndices%h2s_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%h2s_ind)
+            netBenthosReactionTend(benthosIndices%ch4_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%ch4_ind)
+            netBenthosReactionTend(benthosIndices%hco3_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%hco3_ind)
+            netBenthosReactionTend(benthosIndices%fes_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%fes_ind)
+            netBenthosReactionTend(benthosIndices%fes2_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%fes2_ind)
+            netBenthosReactionTend(benthosIndices%s_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%s_ind)
+            netBenthosReactionTend(benthosIndices%caco3a_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%caco3a_ind)
+            netBenthosReactionTend(benthosIndices%caco3b_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%caco3b_ind)
+            netBenthosReactionTend(benthosIndices%co3_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%co3_ind)
+            netBenthosReactionTend(benthosIndices%camgco3_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%camgco3_ind)
+            netBenthosReactionTend(benthosIndices%dic_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%dic_ind)
+            netBenthosReactionTend(benthosIndices%alk_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosReactionTend(column,benthos_indices%alk_ind)
 
-                netBenthosTransportTend(benthosIndices%poca_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%poca_ind)
-                netBenthosTransportTend(benthosIndices%pocb_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%pocb_ind)
-                netBenthosTransportTend(benthosIndices%pocc_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%pocc_ind)
-                netBenthosTransportTend(benthosIndices%pona_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%pona_ind)
-                netBenthosTransportTend(benthosIndices%ponb_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%ponb_ind)
-                netBenthosTransportTend(benthosIndices%ponc_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%ponc_ind)
-                netBenthosTransportTend(benthosIndices%popa_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%popa_ind)
-                netBenthosTransportTend(benthosIndices%popb_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%popb_ind)
-                netBenthosTransportTend(benthosIndices%popc_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%popc_ind)
-                netBenthosTransportTend(benthosIndices%o2_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%o2_ind)
-                netBenthosTransportTend(benthosIndices%nh4_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%nh4_ind)
-                netBenthosTransportTend(benthosIndices%h2po4_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%h2po4_ind)
-                netBenthosTransportTend(benthosIndices%co2_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%co2_ind)
-                netBenthosTransportTend(benthosIndices%no3_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%no3_ind)
-                netBenthosTransportTend(benthosIndices%mno2a_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%mno2a_ind)
-                netBenthosTransportTend(benthosIndices%mno2b_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%mno2b_ind)
-                netBenthosTransportTend(benthosIndices%mn_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%mn_ind)
-                netBenthosTransportTend(benthosIndices%feoh3a_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%feoh3a_ind)
-                netBenthosTransportTend(benthosIndices%feoh3b_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%feoh3b_ind)
-                netBenthosTransportTend(benthosIndices%fe_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%fe_ind)
-                netBenthosTransportTend(benthosIndices%fepa_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%fepa_ind)
-                netBenthosTransportTend(benthosIndices%fepb_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%fepb_ind)
-                netBenthosTransportTend(benthosIndices%so4_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%so4_ind)
-                netBenthosTransportTend(benthosIndices%h2s_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%h2s_ind)
-                netBenthosTransportTend(benthosIndices%ch4_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%ch4_ind)
-                netBenthosTransportTend(benthosIndices%hco3_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%hco3_ind)
-                netBenthosTransportTend(benthosIndices%fes_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%fes_ind)
-                netBenthosTransportTend(benthosIndices%fes2_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%fes2_ind)
-                netBenthosTransportTend(benthosIndices%s_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%s_ind)
-                netBenthosTransportTend(benthosIndices%caco3a_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%caco3a_ind)
-                netBenthosTransportTend(benthosIndices%caco3b_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%caco3b_ind)
-                netBenthosTransportTend(benthosIndices%co3_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%co3_ind)
-                netBenthosTransportTend(benthosIndices%camgco3_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%camgco3_ind)
-                netBenthosTransportTend(benthosIndices%dic_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%dic_ind)
-                netBenthosTransportTend(benthosIndices%alk_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%alk_ind)
+            netBenthosTransportTend(benthosIndices%poca_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%poca_ind)
+            netBenthosTransportTend(benthosIndices%pocb_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%pocb_ind)
+            netBenthosTransportTend(benthosIndices%pocc_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%pocc_ind)
+            netBenthosTransportTend(benthosIndices%pona_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%pona_ind)
+            netBenthosTransportTend(benthosIndices%ponb_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%ponb_ind)
+            netBenthosTransportTend(benthosIndices%ponc_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%ponc_ind)
+            netBenthosTransportTend(benthosIndices%popa_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%popa_ind)
+            netBenthosTransportTend(benthosIndices%popb_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%popb_ind)
+            netBenthosTransportTend(benthosIndices%popc_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%popc_ind)
+            netBenthosTransportTend(benthosIndices%o2_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%o2_ind)
+            netBenthosTransportTend(benthosIndices%nh4_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%nh4_ind)
+            netBenthosTransportTend(benthosIndices%h2po4_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%h2po4_ind)
+            netBenthosTransportTend(benthosIndices%co2_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%co2_ind)
+            netBenthosTransportTend(benthosIndices%no3_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%no3_ind)
+            netBenthosTransportTend(benthosIndices%mno2a_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%mno2a_ind)
+            netBenthosTransportTend(benthosIndices%mno2b_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%mno2b_ind)
+            netBenthosTransportTend(benthosIndices%mn_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%mn_ind)
+            netBenthosTransportTend(benthosIndices%feoh3a_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%feoh3a_ind)
+            netBenthosTransportTend(benthosIndices%feoh3b_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%feoh3b_ind)
+            netBenthosTransportTend(benthosIndices%fe_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%fe_ind)
+            netBenthosTransportTend(benthosIndices%fepa_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%fepa_ind)
+            netBenthosTransportTend(benthosIndices%fepb_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%fepb_ind)
+            netBenthosTransportTend(benthosIndices%so4_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%so4_ind)
+            netBenthosTransportTend(benthosIndices%h2s_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%h2s_ind)
+            netBenthosTransportTend(benthosIndices%ch4_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%ch4_ind)
+            netBenthosTransportTend(benthosIndices%hco3_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%hco3_ind)
+            netBenthosTransportTend(benthosIndices%fes_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%fes_ind)
+            netBenthosTransportTend(benthosIndices%fes2_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%fes2_ind)
+            netBenthosTransportTend(benthosIndices%s_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%s_ind)
+            netBenthosTransportTend(benthosIndices%caco3a_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%caco3a_ind)
+            netBenthosTransportTend(benthosIndices%caco3b_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%caco3b_ind)
+            netBenthosTransportTend(benthosIndices%co3_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%co3_ind)
+            netBenthosTransportTend(benthosIndices%camgco3_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%camgco3_ind)
+            netBenthosTransportTend(benthosIndices%dic_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%dic_ind)
+            netBenthosTransportTend(benthosIndices%alk_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTransportTend(column,benthos_indices%alk_ind)
 
 
-                netBenthosTend(benthosIndices%poca_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%poca_ind)
-                netBenthosTend(benthosIndices%pocb_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%pocb_ind)
-                netBenthosTend(benthosIndices%pocc_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%pocc_ind)
-                netBenthosTend(benthosIndices%pona_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%pona_ind)
-                netBenthosTend(benthosIndices%ponb_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%ponb_ind)
-                netBenthosTend(benthosIndices%ponc_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%ponc_ind)
-                netBenthosTend(benthosIndices%popa_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%popa_ind)
-                netBenthosTend(benthosIndices%popb_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%popb_ind)
-                netBenthosTend(benthosIndices%popc_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%popc_ind)
-                netBenthosTend(benthosIndices%o2_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%o2_ind)
-                netBenthosTend(benthosIndices%nh4_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%nh4_ind)
-                netBenthosTend(benthosIndices%h2po4_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%h2po4_ind)
-                netBenthosTend(benthosIndices%co2_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%co2_ind)
-                netBenthosTend(benthosIndices%no3_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%no3_ind)
-                netBenthosTend(benthosIndices%mno2a_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%mno2a_ind)
-                netBenthosTend(benthosIndices%mno2b_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%mno2b_ind)
-                netBenthosTend(benthosIndices%mn_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%mn_ind)
-                netBenthosTend(benthosIndices%feoh3a_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%feoh3a_ind)
-                netBenthosTend(benthosIndices%feoh3b_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%feoh3b_ind)
-                netBenthosTend(benthosIndices%fe_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%fe_ind)
-                netBenthosTend(benthosIndices%fepa_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%fepa_ind)
-                netBenthosTend(benthosIndices%fepb_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%fepb_ind)
-                netBenthosTend(benthosIndices%so4_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%so4_ind)
-                netBenthosTend(benthosIndices%h2s_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%h2s_ind)
-                netBenthosTend(benthosIndices%ch4_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%ch4_ind)
-                netBenthosTend(benthosIndices%hco3_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%hco3_ind)
-                netBenthosTend(benthosIndices%fes_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%fes_ind)
-                netBenthosTend(benthosIndices%fes2_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%fes2_ind)
-                netBenthosTend(benthosIndices%s_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%s_ind)
-                netBenthosTend(benthosIndices%caco3a_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%caco3a_ind)
-                netBenthosTend(benthosIndices%caco3b_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%caco3b_ind)
-                netBenthosTend(benthosIndices%co3_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%co3_ind)
-                netBenthosTend(benthosIndices%camgco3_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%camgco3_ind)
-                netBenthosTend(benthosIndices%dic_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%dic_ind)
-                netBenthosTend(benthosIndices%alk_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%alk_ind)
+            netBenthosTend(benthosIndices%poca_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%poca_ind)
+            netBenthosTend(benthosIndices%pocb_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%pocb_ind)
+            netBenthosTend(benthosIndices%pocc_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%pocc_ind)
+            netBenthosTend(benthosIndices%pona_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%pona_ind)
+            netBenthosTend(benthosIndices%ponb_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%ponb_ind)
+            netBenthosTend(benthosIndices%ponc_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%ponc_ind)
+            netBenthosTend(benthosIndices%popa_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%popa_ind)
+            netBenthosTend(benthosIndices%popb_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%popb_ind)
+            netBenthosTend(benthosIndices%popc_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%popc_ind)
+            netBenthosTend(benthosIndices%o2_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%o2_ind)
+            netBenthosTend(benthosIndices%nh4_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%nh4_ind)
+            netBenthosTend(benthosIndices%h2po4_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%h2po4_ind)
+            netBenthosTend(benthosIndices%co2_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%co2_ind)
+            netBenthosTend(benthosIndices%no3_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%no3_ind)
+            netBenthosTend(benthosIndices%mno2a_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%mno2a_ind)
+            netBenthosTend(benthosIndices%mno2b_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%mno2b_ind)
+            netBenthosTend(benthosIndices%mn_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%mn_ind)
+            netBenthosTend(benthosIndices%feoh3a_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%feoh3a_ind)
+            netBenthosTend(benthosIndices%feoh3b_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%feoh3b_ind)
+            netBenthosTend(benthosIndices%fe_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%fe_ind)
+            netBenthosTend(benthosIndices%fepa_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%fepa_ind)
+            netBenthosTend(benthosIndices%fepb_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%fepb_ind)
+            netBenthosTend(benthosIndices%so4_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%so4_ind)
+            netBenthosTend(benthosIndices%h2s_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%h2s_ind)
+            netBenthosTend(benthosIndices%ch4_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%ch4_ind)
+            netBenthosTend(benthosIndices%hco3_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%hco3_ind)
+            netBenthosTend(benthosIndices%fes_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%fes_ind)
+            netBenthosTend(benthosIndices%fes2_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%fes2_ind)
+            netBenthosTend(benthosIndices%s_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%s_ind)
+            netBenthosTend(benthosIndices%caco3a_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%caco3a_ind)
+            netBenthosTend(benthosIndices%caco3b_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%caco3b_ind)
+            netBenthosTend(benthosIndices%co3_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%co3_ind)
+            netBenthosTend(benthosIndices%camgco3_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%camgco3_ind)
+            netBenthosTend(benthosIndices%dic_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%dic_ind)
+            netBenthosTend(benthosIndices%alk_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netBenthosTend(column,benthos_indices%alk_ind)
 
-                netElements(elementIndices%carbon_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netElements(column,benthos_element_indices%carbon_ind)
-                netElements(elementIndices%nitrogen_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netElements(column,benthos_element_indices%nitrogen_ind)
-                netElements(elementIndices%oxygen_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netElements(column,benthos_element_indices%oxygen_ind)
-                netElements(elementIndices%phosphorus_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netElements(column,benthos_element_indices%phosphorus_ind)
-                netElements(elementIndices%sulfur_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netElements(column,benthos_element_indices%sulfur_ind)
-                netElements(elementIndices%manganese_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netElements(column,benthos_element_indices%manganese_ind)
-                netElements(elementIndices%iron_ind,iCell) = &
-                   benthos_diagnostic_fields % diag_netElements(column,benthos_element_indices%iron_ind)
+            netElements(elementIndices%carbon_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netElements(column,benthos_element_indices%carbon_ind)
+            netElements(elementIndices%nitrogen_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netElements(column,benthos_element_indices%nitrogen_ind)
+            netElements(elementIndices%oxygen_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netElements(column,benthos_element_indices%oxygen_ind)
+            netElements(elementIndices%phosphorus_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netElements(column,benthos_element_indices%phosphorus_ind)
+            netElements(elementIndices%sulfur_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netElements(column,benthos_element_indices%sulfur_ind)
+            netElements(elementIndices%manganese_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netElements(column,benthos_element_indices%manganese_ind)
+            netElements(elementIndices%iron_ind,iCell) = &
+               benthos_diagnostic_fields % diag_netElements(column,benthos_element_indices%iron_ind)
                 
-            endif  !  config_benthosTracers_diagnostic_fields_level1
+         endif  !  config_benthosTracers_diagnostic_fields_level1
 
-            !
-            ! level 2 diagnostics
-            !
- !...
+         !
+         ! level 2 diagnostics
+         !
+
          !
          ! level 1 diagnostics with no depth dependence
          !
@@ -912,12 +1015,12 @@ contains
       type (mpas_pool_type), pointer :: diagnosticsPool
       type (mpas_pool_type), pointer :: statePool
       type (mpas_pool_type), pointer :: meshPool
-      type (mpas_pool_type), pointer :: verticalMeshPool
+      type (mpas_pool_type), pointer :: tendPool
       type (mpas_pool_type), pointer :: forcingPool
       type (mpas_pool_type), pointer :: tracersPool
       type (mpas_pool_type), pointer :: seafloorTracersPool
       type (mpas_pool_type), pointer :: seafloorStoragePool
-!      type (mpas_pool_type), pointer :: benthosTracersPool
+      type (mpas_pool_type), pointer :: seafloorTendPool
       type (mpas_pool_type), pointer :: benthosAuxiliaryPool
       type (mpas_pool_type), pointer :: benthosDiagFieldsLevel1Pool
 !      type (mpas_pool_type), pointer :: ecosysMonthlyForcing
@@ -997,12 +1100,13 @@ contains
       call mpas_pool_get_subpool(domain % blocklist % structs, 'state', statePool)
       call mpas_pool_get_subpool(domain % blocklist % structs, 'forcing', forcingPool)
       call mpas_pool_get_subpool(domain % blocklist % structs, 'mesh', meshPool)
-      call mpas_pool_get_subpool(domain % blocklist % structs, 'verticalMesh', verticalMeshPool)
+      call mpas_pool_get_subpool(domain % blocklist % structs, 'tend', tendPool)
       call mpas_pool_get_subpool(domain % blocklist % structs, 'diagnostics', diagnosticsPool)
       
       call mpas_pool_get_subpool(statePool, 'tracers', tracersPool)
       call mpas_pool_get_subpool(statePool, 'seafloorTracers', seafloorTracersPool)
       call mpas_pool_get_subpool(statePool, 'seafloorStorage', seafloorStoragePool)
+      call mpas_pool_get_subpool(tendPool, 'seafloorTend', seafloorTendPool)
       call mpas_pool_get_subpool(diagnosticsPool, 'benthosDiagFieldsLevel1', benthosDiagFieldsLevel1Pool)
 
       call mpas_pool_get_dimension(meshPool, 'nCellsSolve', nCellsSolve)
@@ -1011,7 +1115,7 @@ contains
       call mpas_pool_get_array(seafloorTracersPool, 'benthosTracers', benthosTracers)
       call mpas_pool_get_array(seafloorTracersPool, 'benthosPhPrev3d', benthosPhPrev3d)
       call mpas_pool_get_array(seafloorStoragePool, 'benthosTracersStorage', benthosTracersStorage)
-      call mpas_pool_get_array(verticalMeshPool, 'benthosInterfaceLayerThickness', benthosInterfaceLayerThickness)
+      call mpas_pool_get_array(seafloorTendPool, 'benthosInterfaceLayerThickness', benthosInterfaceLayerThickness)
 
 !      call mpas_log_write('Error test warning, mpas_ocn_tracer_benthos.F',MPAS_LOG_WARN)
 !      call mpas_log_write('Check benthos_tracer_cnt: $i',MPAS_LOG_ERR,intArgs=(/benthos_tracer_cnt/))
@@ -1040,7 +1144,7 @@ contains
 !  sets most of benthos parameters
 !  sets namelist defaults
 !-----------------------------------------------------------------------
-
+ 
       call benthos_parms_init   ! initialize namelist defaults
       !
       ! for now only do 1 column at a time
@@ -1284,12 +1388,14 @@ contains
 
     ! Set configuration flags
 
-      call benthos_flags_init(config_set_benthos_flags, config_use_carbonate_saturation, config_use_secondary_reactions, &
-           config_use_depth_dependent_porosity, config_use_non_zero_diffusivity, config_use_sedimentation, &
-           config_use_fast_sedimentation, config_use_positive_sedimentation, config_use_bgc_sinking_flux, config_use_step_initial_profiles, &
+      call benthos_flags_init(config_set_benthos_flags, config_use_carbonate_saturation, &
+           config_use_secondary_reactions, config_use_depth_dependent_porosity, &
+           config_use_non_zero_diffusivity, config_use_sedimentation, &
+           config_use_fast_sedimentation, config_use_positive_sedimentation, &
+           config_use_bgc_sinking_flux, config_use_step_initial_profiles, &
            config_use_benthic_reactions, config_use_flux_correction, config_use_ocean_conc, &
            config_use_deep_source, config_use_constant_diffusivity)
-
+           
 !NJ-TEST: VERIFIED
 test_flag = .false.
       if (test_flag) then
@@ -1372,7 +1478,6 @@ test_flag = .false.
      ! benthos_init sets short and long names, units in benthos_indices
      ! also sets benthos model parameter fields
 
-!      call mpas_log_write('before benthos_init', MPAS_LOG_ERR)
       call benthos_init(benthos_indices, benthos_element_indices, nBenthicVertLevels, nBenthicTracers, &
          nElements, benthosInterfaceLayerThickness)
 
@@ -1401,11 +1506,14 @@ test_flag = .false.
 !  allocate input, forcing, diagnostic arrays
 !-----------------------------------------------------------------------
 
+!      call mpas_log_write('Before Allocate',MPAS_LOG_ERR)
+      
       allocate ( benthos_input%benthosTracerBulk(nBenthicVertLevels+1, numBenthicColumnsMax, benthos_tracer_cnt) )
 !      allocate ( benthos_input%tracerConc(nBenthicVertLevels+1, numBenthicColumnsMax, benthos_tracer_cnt))
       allocate ( benthos_input%deepStorage(numBenthicColumnsMax, benthos_tracer_cnt))
       allocate ( benthos_input%oceanBottomDepth(numBenthicColumnsMax))
       allocate ( benthos_input%oceanBottomDensity(numBenthicColumnsMax))
+      allocate ( benthos_input%oceanBottomPressure(numBenthicColumnsMax))
       allocate ( benthos_input%tracerType(benthos_tracer_cnt) )
       allocate ( benthos_input%PH_PREV_3D(nBenthicVertLevels+1, numBenthicColumnsMax))
       allocate ( benthos_input%bottom_level(numBenthicColumnsMax))
@@ -1424,14 +1532,59 @@ test_flag = .false.
       allocate ( benthos_input%oceanPONFlux(numBenthicColumnsMax))
       allocate ( benthos_input%oceanParticulateIronFlux(numBenthicColumnsMax))
       allocate ( benthos_input%oceanCalciteFlux(numBenthicColumnsMax))
+
       allocate ( benthos_output%benthosTendencies(nBenthicVertLevels+1, numBenthicColumnsMax, benthos_tracer_cnt) )
       allocate ( benthos_output%benthosTransportTendencies(nBenthicVertLevels+1, numBenthicColumnsMax, benthos_tracer_cnt) )
       allocate ( benthos_output%benthosReactionTendencies(nBenthicVertLevels+1, numBenthicColumnsMax, benthos_tracer_cnt) )
-
       allocate ( benthos_output%elementTendencies(nBenthicVertLevels+1, numBenthicColumnsMax, element_tracer_cnt) )
       allocate ( benthos_output%elementReactionTendencies(nBenthicVertLevels+1, numBenthicColumnsMax, element_tracer_cnt) )
       allocate ( benthos_output%elementTransportTendencies(nBenthicVertLevels+1, numBenthicColumnsMax, element_tracer_cnt) )
       allocate ( benthos_output%elementDeepStorage(numBenthicColumnsMax, element_tracer_cnt) )
+
+      allocate ( benthos_output%oceanBottomTemperature(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomSalinity(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomSilicate(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomDensity(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomPressure(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomDepth(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomPhosphate(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomAmmonium(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomNitrate(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomOxygen(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomIron(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomDIC(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomAlkalinity(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomCarbonDioxide(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomManganese(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomHydrogenSulfide(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomMethane(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomBicarbonate(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomCarbonate(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomSulfate(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanPOCaFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanPOPaFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanPONaFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanPOCbFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanPOPbFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanPONbFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanPOCcFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanPOPcFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanPONcFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanCalciteFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanAragoniteFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanMgCalciteFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanManganeseOxideaFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanManganeseOxidebFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanIronOxyhydroxideaFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanIronOxyhydroxidebFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanIronBoundPhosphorusaFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanIronBoundPhosphorusbFlux(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanPrecipManganeseOxidea(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanPrecipManganeseOxideb(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanPrecipIronOxyhydroxidea(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanPrecipIronOxyhydroxideb(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanPrecipIronBoundPhosphorusa(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanPrecipIronBoundPhosphorusb(numBenthicColumnsMax))
 
       allocate ( benthos_forcing%deepStoragePrescribedFlux(numBenthicColumnsMax, benthos_tracer_cnt) )
       allocate ( benthos_forcing%benthosOceanSedimentFlux(numBenthicColumnsMax, benthos_tracer_cnt) )
@@ -1521,7 +1674,9 @@ test_flag = .false.
 
    ! TracerType: 1 for solutes, 0 for solids
 
-      benthos_input%tracerType(:) = 1
+      do iBenthicTracers = 1, nBenthicTracers
+         benthos_input%tracerType(iBenthicTracers) = 1
+      end do
 
    ! solids
       benthos_input%tracerType(benthos_indices%poca_ind) = 0
@@ -1546,49 +1701,54 @@ test_flag = .false.
       benthos_input%tracerType(benthos_indices%fes_ind) = 0
       benthos_input%tracerType(benthos_indices%fes2_ind) = 0
 
-   ! prescribed initial concentration array -- overwrite restart or input
+   ! prescribed initial concentration array
+!      call mpas_log_write('After Allocate in mpas_ocn_tracer_benthos.F',MPAS_LOG_ERR)
 
       if (.not. config_do_restart_benthos) then
-
-         benthosPhPrev3d(:,:) = 0.0_RKIND
-         benthosTracersStorage(:,:) = 0.0_RKIND
-         benthosTracers(:,:,:) = 0.0_RKIND
-
          do iCell = 1, nCellsSolve
+            do iBenthicTracers = 1, nBenthicTracers
+               benthosTracersStorage(iBenthicTracers,iCell) = 0.0_RKIND
+            end do
+               
             do iVertLevels = 1, nBenthicVertLevels+1
-
-               benthosTracers(benthosIndices%poca_ind,iVertLevels,iCell) = 1060.0_RKIND ! *0.49 !  mmol/kg
-               benthosTracers(benthosIndices%pocb_ind,iVertLevels,iCell) = 1060.0_RKIND*0.15_RKIND !  mmol/kg
-               benthosTracers(benthosIndices%pocc_ind,iVertLevels,iCell) = 1060.0_RKIND*0.36_RKIND !  mmol/kg
-               benthosTracers(benthosIndices%popa_ind,iVertLevels,iCell) = 1060.0_RKIND*CtoP !
-               benthosTracers(benthosIndices%popb_ind,iVertLevels,iCell) = 1060.0_RKIND*0.15_RKIND*CtoP !
-               benthosTracers(benthosIndices%popc_ind,iVertLevels,iCell) = 1060.0_RKIND*0.36_RKIND*CtoP !
-               benthosTracers(benthosIndices%pona_ind,iVertLevels,iCell) = 1060.0_RKIND*CtoP/NtoP !
-               benthosTracers(benthosIndices%ponb_ind,iVertLevels,iCell) = 1060.0_RKIND*0.15_RKIND*CtoP/NtoP !
-               benthosTracers(benthosIndices%ponc_ind,iVertLevels,iCell) = 1060.0_RKIND*0.36_RKIND*CtoP/NtoP !
-               benthosTracers(benthosIndices%o2_ind,iVertLevels,iCell) = 0.1_RKIND  !
+               benthosPhPrev3d(iVertLevels,iCell) = 0.0_RKIND
+               benthosTracers(benthosIndices%poca_ind,iVertLevels,iCell) = 0.0_RKIND ! *0.49 !  mmol/kg
+               benthosTracers(benthosIndices%pocb_ind,iVertLevels,iCell) = 0.0_RKIND !*0.15_RKIND !  mmol/kg
+               benthosTracers(benthosIndices%pocc_ind,iVertLevels,iCell) = 0.0_RKIND !*0.36_RKIND !  mmol/kg
+               benthosTracers(benthosIndices%popa_ind,iVertLevels,iCell) = 0.0_RKIND !*CtoP !
+               benthosTracers(benthosIndices%popb_ind,iVertLevels,iCell) = 0.0_RKIND !*0.15_RKIND*CtoP !
+               benthosTracers(benthosIndices%popc_ind,iVertLevels,iCell) = 0.0_RKIND !*0.36_RKIND*CtoP !
+               benthosTracers(benthosIndices%pona_ind,iVertLevels,iCell) = 0.0_RKIND !*CtoP/NtoP !
+               benthosTracers(benthosIndices%ponb_ind,iVertLevels,iCell) = 0.0_RKIND !*0.15_RKIND*CtoP/NtoP !
+               benthosTracers(benthosIndices%ponc_ind,iVertLevels,iCell) = 0.0_RKIND !*0.36_RKIND*CtoP/NtoP !
+               benthosTracers(benthosIndices%o2_ind,iVertLevels,iCell) = 0.1_RKIND   !
                benthosTracers(benthosIndices%nh4_ind,iVertLevels,iCell) = 0.0_RKIND  !
-               benthosTracers(benthosIndices%h2po4_ind,iVertLevels,iCell) = 90.0_RKIND !   umol/L  Reed
-               benthosTracers(benthosIndices%co2_ind,iVertLevels,iCell) = 0.2_RKIND !   mM Krumins
-               benthosTracers(benthosIndices%no3_ind,iVertLevels,iCell) = 0.0_RKIND !   mM Krumins
-               benthosTracers(benthosIndices%mno2a_ind,iVertLevels,iCell) = 0.2_RKIND !        mmol/kg  Reed et al
-               benthosTracers(benthosIndices%mno2b_ind,iVertLevels,iCell) = 0.05_RKIND 
-               benthosTracers(benthosIndices%mn_ind,iVertLevels,iCell) = 15.0_RKIND !  umol/L Reed
-               benthosTracers(benthosIndices%feoh3a_ind,iVertLevels,iCell) = 1.0_RKIND !    mmol/kg
-               benthosTracers(benthosIndices%feoh3b_ind,iVertLevels,iCell) = 0.1_RKIND !    mmol/kg
-               benthosTracers(benthosIndices%fepa_ind,iVertLevels,iCell) = 0.3_RKIND !  mmol/kg  Reed
-               benthosTracers(benthosIndices%fepb_ind,iVertLevels,iCell) = 0.2_RKIND !  mmol/kg  Reed
-               benthosTracers(benthosIndices%so4_ind,iVertLevels,iCell) = 12.0_RKIND*1000.0_RKIND !  umol/L from mmol/L Reed
+               benthosTracers(benthosIndices%h2po4_ind,iVertLevels,iCell) = 0.0_RKIND ! 90.0_RKIND !   umol/L  Reed
+               benthosTracers(benthosIndices%co2_ind,iVertLevels,iCell) = 0.2_RKIND  !   mM Krumins
+               benthosTracers(benthosIndices%no3_ind,iVertLevels,iCell) = 0.0_RKIND  !   mM Krumins
+               benthosTracers(benthosIndices%mno2a_ind,iVertLevels,iCell) = 0.0_RKIND!        mmol/kg  Reed et al
+               benthosTracers(benthosIndices%mno2b_ind,iVertLevels,iCell) = 0.0_RKIND 
+               benthosTracers(benthosIndices%mn_ind,iVertLevels,iCell) = 0.0_RKIND !  umol/L Reed
+               benthosTracers(benthosIndices%feoh3a_ind,iVertLevels,iCell) = 0.0_RKIND !    mmol/kg
+               benthosTracers(benthosIndices%feoh3b_ind,iVertLevels,iCell) = 0.0_RKIND !    mmol/kg
+               benthosTracers(benthosIndices%fe_ind,iVertLevels,iCell) = 0.0_RKIND !  mmol/kg  Reed
+               benthosTracers(benthosIndices%fepa_ind,iVertLevels,iCell) = 0.0_RKIND !  mmol/kg  Reed
+               benthosTracers(benthosIndices%fepb_ind,iVertLevels,iCell) = 0.0_RKIND !  mmol/kg  Reed
+               benthosTracers(benthosIndices%so4_ind,iVertLevels,iCell) = 0.0_RKIND  !*1000.0_RKIND !  umol/L from mmol/L Reed
                benthosTracers(benthosIndices%h2s_ind,iVertLevels,iCell) = 0.0_RKIND !   gets to 600 umol/L at bottom but theres a bottom flux
                benthosTracers(benthosIndices%ch4_ind,iVertLevels,iCell) = 0.0_RKIND !
                benthosTracers(benthosIndices%hco3_ind,iVertLevels,iCell) = 20.0_RKIND !  mM  Krumins et al
-               benthosTracers(benthosIndices%s_ind,iVertLevels,iCell) = 200.0_RKIND !  2000.0 ! 200.0 !  mmol/kg  Reed et al
+               benthosTracers(benthosIndices%fes_ind,iVertLevels,iCell) = 0.0_RKIND !  2000.0 ! 200.0 !  mmol/kg  Reed et al
+               benthosTracers(benthosIndices%fes2_ind,iVertLevels,iCell) = 0.0_RKIND !  2000.0 ! 200.0 !  mmol/kg  Reed et al
+               benthosTracers(benthosIndices%s_ind,iVertLevels,iCell) = 0.0_RKIND !  2000.0 ! 200.0 !  mmol/kg  Reed et al
                benthosTracers(benthosIndices%co3_ind,iVertLevels,iCell) = 66.75_RKIND !  66.75 ! 65 umol/kg * 1.027 g/m3   Sulpis et al 2018
                benthosTracers(benthosIndices%dic_ind,iVertLevels,iCell) = benthosTracers(benthosIndices%co3_ind,iVertLevels,iCell) + benthosTracers(benthosIndices%co2_ind,iVertLevels,iCell) + benthosTracers(benthosIndices%hco3_ind,iVertLevels,iCell) 
                benthosTracers(benthosIndices%alk_ind,iVertLevels,iCell) = 2306.0_RKIND !  87 of the ocean conc. (:,:,benthosIndices%mmol/m3) same as ocean conc. Krumins et al
-               benthosTracers(benthosIndices%caco3a_ind,iVertLevels,iCell) = 200.0_RKIND*.63_RKIND !  ratio of PIC is 63:13:24...  Roughly  POC:PIC = (:,:,benthosIndices%depth)^(:,:,benthosIndices%-0.56)*64.3   so about 4.8:1
-               benthosTracers(benthosIndices%caco3b_ind,iVertLevels,iCell) = 200.0_RKIND*0.13_RKIND !
-               benthosTracers(benthosIndices%camgco3_ind,iVertLevels,iCell) = 200.0_RKIND*0.24_RKIND !
+               benthosTracers(benthosIndices%caco3a_ind,iVertLevels,iCell) = 1000.0_RKIND*.5_RKIND !  ratio of PIC is 63:13:24...  Roughly  POC:PIC = (:,:,benthosIndices%depth)^(:,:,benthosIndices%-0.56)*64.3   so about 4.8:1
+               benthosTracers(benthosIndices%caco3b_ind,iVertLevels,iCell) = 1000.0_RKIND*0.35_RKIND !
+               benthosTracers(benthosIndices%camgco3_ind,iVertLevels,iCell) = 1000.0_RKIND*0.15_RKIND !
+!               call mpas_log_write('initial benthosTracers(benthosIndices%caco3b_ind,iVertLevels,iCell): $r',MPAS_LOG_ERR,realArgs=(/benthosTracers(benthosIndices%caco3b_ind,iVertLevels,iCell)/))
+
             end do              ! iVertLevels
             if (config_use_step_initial_profiles) then
                do iBenthicTracers = 1,nBenthicTracers
@@ -1602,13 +1762,9 @@ test_flag = .false.
             end if  ! step function
          end do                 ! iCell
       end if                    ! .not. config_do_restart_benthos
-      else
-         call mpas_log_write('not associated benthosTracers', MPAS_LOG_ERR)
-      end if  !  associated(benthosTracers)
-
-      
-!NJ-TEST: VERIFIED
-test_flag = .false.
+            
+      !NJ-TEST: VERIFIED
+      test_flag = .false.
       if (test_flag) then
          call mpas_log_write('test benthos_flags_init initialize',MPAS_LOG_ERR)
          do iBenthicTracers = 1, nBenthicTracers
@@ -1622,6 +1778,10 @@ test_flag = .false.
 !         return
       end if
 
+      else
+         call mpas_log_write('not associated benthosTracers', MPAS_LOG_ERR)
+      end if  !  associated(benthosTracers)
+
    !--------------------------------------------------------------------
 
    end subroutine ocn_benthos_tracer_init!}}}
@@ -1633,7 +1793,7 @@ test_flag = .false.
 !  routine get_benthosData
 !
 !> \brief   retrieve data needed to compute benthos deposition and runoff inputs
-!> \author  Mathew Maltrud
+!> \author  Ma<thew Maltrud
 !> \date    03/07/16
 !> \details
 !>  This routine calls mpas_forcing routines to acquire needed benthos forcing data and interpolates

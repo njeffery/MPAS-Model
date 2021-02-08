@@ -164,11 +164,15 @@ contains
       !-----------------------------------------------------------------
 
       type (mpas_pool_type), pointer :: ecosysAuxiliary  ! additional forcing fields
+      type (mpas_pool_type), pointer :: ecosysBenthosForcing  ! forcing fields for benthos BGC
       type (mpas_pool_type), pointer :: ecosysDiagFieldsLevel1,  &  ! diagnostics
                                         ecosysDiagFieldsLevel2,  &
                                         ecosysDiagFieldsLevel3,  &
                                         ecosysDiagFieldsLevel4,  &
                                         ecosysDiagFieldsLevel5
+
+      logical, pointer ::  &
+         config_use_benthosTracers
 
       !
       ! level 1 diagnostics
@@ -281,6 +285,14 @@ contains
          ecosys_diag_bsiToSed,       &
          ecosys_diag_dustToSed,      &
          ecosys_diag_OtherRemin
+         
+      ! two dimensional arrays for benthos module (nx,nz)
+      real (BGC_r8), dimension(:,:), pointer :: &
+         benthos_pocToSed, &
+         benthos_ponToSed, &
+         benthos_popToSed, &
+         benthos_pfeToSed, &
+         benthos_calcToSed
 
       ! two dimensional arrays for each autotroph (nx,nz,autotroph_cnt)
       real (BGC_r8), dimension(:,:,:), pointer :: &
@@ -385,9 +397,8 @@ contains
          call mpas_pool_get_array(ecosysDiagFieldsLevel1, 'ecosys_diag_pfeToSed', ecosys_diag_pfeToSed)
          call mpas_pool_get_array(ecosysDiagFieldsLevel1, 'ecosys_diag_SedDenitrif', ecosys_diag_SedDenitrif)
          call mpas_pool_get_array(ecosysDiagFieldsLevel1, 'ecosys_diag_tot_Nfix', ecosys_diag_tot_Nfix)
-
       endif
-
+      
       if (config_ecosysTracers_diagnostic_fields_level2) then
          call mpas_pool_get_subpool(forcingPool, 'ecosysDiagFieldsLevel2', ecosysDiagFieldsLevel2)
          call mpas_pool_get_array(ecosysDiagFieldsLevel2, 'ecosys_diag_O2_PRODUCTION', ecosys_diag_O2_PRODUCTION)
@@ -480,6 +491,18 @@ contains
          call mpas_pool_get_array(ecosysDiagFieldsLevel5, 'ecosys_diag_PO4_RESTORE', ecosys_diag_PO4_RESTORE)
          call mpas_pool_get_array(ecosysDiagFieldsLevel5, 'ecosys_diag_NO3_RESTORE', ecosys_diag_NO3_RESTORE)
          call mpas_pool_get_array(ecosysDiagFieldsLevel5, 'ecosys_diag_SiO3_RESTORE', ecosys_diag_SiO3_RESTORE)
+      endif
+
+      ! for use in the benthos submodule
+
+      call mpas_pool_get_config(ocnConfigs, 'config_use_benthosTracers', config_use_benthosTracers)
+      if (config_use_benthosTracers) then
+         call mpas_pool_get_subpool(forcingPool, 'ecosysBenthosForcing', ecosysBenthosForcing)
+         call mpas_pool_get_array(ecosysBenthosForcing, 'benthos_calcToSed', benthos_calcToSed)
+         call mpas_pool_get_array(ecosysBenthosForcing, 'benthos_pocToSed', benthos_pocToSed)
+         call mpas_pool_get_array(ecosysBenthosForcing, 'benthos_pocToSed', benthos_ponToSed)
+         call mpas_pool_get_array(ecosysBenthosForcing, 'benthos_pocToSed', benthos_popToSed)
+         call mpas_pool_get_array(ecosysBenthosForcing, 'benthos_pfeToSed', benthos_pfeToSed)
       endif
 
       numColumns = 1
@@ -675,6 +698,23 @@ contains
             PH_PREV_ALT_CO2_3D(iLevel,iCell) = BGC_output%PH_PREV_ALT_CO2_3D(iLevel,column)
 
             !
+            ! Benthos Forcing Fields
+            !
+
+            if (config_use_benthosTracers) then
+               benthos_calcToSed(iLevel,iCell) =  &
+                           BGC_diagnostic_fields%diag_calcToSed(iLevel,column)*convertLengthCGStoMKS
+               benthos_pocToSed(iLevel,iCell) =  &
+                           BGC_diagnostic_fields%diag_pocToSed(iLevel,column)*convertLengthCGStoMKS
+               benthos_pfeToSed(iLevel,iCell) =  &
+                           BGC_diagnostic_fields%diag_pfeToSed(iLevel,column)*convertLengthCGStoMKS
+               benthos_ponToSed(iLevel,iCell) =  &
+                           BGC_diagnostic_fields%diag_ponToSed(iLevel,column)*convertLengthCGStoMKS
+               benthos_popToSed(iLevel,iCell) =  &
+                           BGC_diagnostic_fields%diag_popToSed(iLevel,column)*convertLengthCGStoMKS
+            endif  !  config_ecosysTracers_diagnostic_fields_level3
+
+            !
             ! level 1 diagnostics
             !
 
@@ -707,8 +747,8 @@ contains
                            BGC_diagnostic_fields%diag_SedDenitrif(iLevel,column)*convertLengthCGStoMKS
                ecosys_diag_tot_Nfix(iLevel,iCell) =  &
                            BGC_diagnostic_fields%diag_tot_Nfix(iLevel,column)
-            endif  !  config_ecosysTracers_diagnostic_fields_level1
-
+            endif
+                        
             !
             ! level 2 diagnostics
             !
@@ -827,8 +867,7 @@ contains
                   ecosys_diag_bSi_form(autotroph,iLevel,iCell) =  &
                            BGC_diagnostic_fields%diag_bSi_form(iLevel,column,autotroph)
                enddo  !  autotroph loop
-
-            endif  !  config_ecosysTracers_diagnostic_fields_level3
+            endif
 
             !
             ! level 4 diagnostics

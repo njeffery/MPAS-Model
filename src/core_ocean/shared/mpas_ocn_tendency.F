@@ -480,7 +480,6 @@ contains
 !
 !-----------------------------------------------------------------------
 
-
    subroutine ocn_tend_tracer(tendPool, statePool, forcingPool, &
                               meshPool, verticalMeshPool, swForcingPool, &
                               dt, activeTracersOnlyIn, timeLevelIn )!{{{

@@ -640,7 +640,24 @@
 			/>
 			<var name="avgCO2_gas_flux" type="real" dimensions="nCells Time" units="mmol C m^{-3} m s^{-1}"
 				description="CO2 Gas Flux averaged over a coupling interval"
+			/> 
+		</var_struct>
+		<var_struct name="ecosysBenthosForcing" time_levs="1" packages="ecosysTracersPKG">
+			<var name="benthos_calcToSed" type="real" dimensions="nVertLevels nCells Time" units="mmol C m^{-3} m s^{-1}"
+				description="CaCO3 Flux to Sediments"
 			/>
+			<var name="benthos_pocToSed" type="real" dimensions="nVertLevels nCells Time" units="mmol C m^{-3} m s^{-1}"
+				description="POC Flux to Sediments"
+			/>
+			<var name="benthos_pfeToSed" type="real" dimensions="nVertLevels nCells Time" units="mmol Fe m^{-3} m s^{-1}"
+				description="Fe Flux to Sediments"
+			/>
+			<var name="benthos_ponToSed" type="real" dimensions="nVertLevels nCells Time" units="mmol N m^{-3} m s^{-1}"
+				description="N Burial Flux to Sediments"
+			/>
+			<var name="benthos_popToSed" type="real" dimensions="nVertLevels nCells Time" units="mmol P m^{-3} m s^{-1}"
+				description="P Flux to Sediments"
+			/> 
 		</var_struct>
 
 		<var_struct name="ecosysSeaIceCoupling" time_levs="1" packages="ecosysTracersPKG">

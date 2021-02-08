@@ -2330,9 +2330,6 @@
 		<var name="refLayerThickness" type="real" dimensions="nVertLevels" units="m"
 			 description="Reference layerThickness of ocean for each vertical level."
 		/>
-	        <var name="benthosInterfaceLayerThickness" type="real" dimensions="nBenthicVertLevelsP1" units="m"
-                         description="vertical layer thickness for each interface grid level"
-                />
 	</var_struct>
 	<var_struct name="tend" time_levs="1">
 		<var name="tendNormalVelocity" type="real" dimensions="nVertLevels nEdges Time" units="m s^{-2}" name_in_code="normalVelocity"
