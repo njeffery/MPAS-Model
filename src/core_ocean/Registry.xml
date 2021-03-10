@@ -1456,6 +1456,7 @@
 			<var name="cullCell"/>
 			<var name="effectiveDensityInLandIce"/>
 			<var_struct name="ecosysAuxiliary"/>
+			<var_struct name="benthosAuxiliary"/>
 			<var name="landIceMask"/>
 			<var name="landIcePressure"/>
 			<var name="landIceFraction"/>

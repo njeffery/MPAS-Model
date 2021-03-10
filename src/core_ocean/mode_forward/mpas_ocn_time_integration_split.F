@@ -423,6 +423,7 @@ module ocn_time_integration_split
                end do
                !$omp end do
                !$omp end parallel
+
             end if
          end if
       end do
@@ -441,7 +442,7 @@ module ocn_time_integration_split
             !$omp do schedule(runtime) private(k)
             do iCell = 1, nCellsAll  ! couple tracers to thickness
             do k = 1, nBenthicVertLevels+1
-                        benthosTracersNew(:, k, iCell) = benthosTracersCur(:, k, iCell)
+               benthosTracersNew(:, k, iCell) = benthosTracersCur(:, k, iCell)
             end do
             end do
             !$omp end do
@@ -1543,6 +1544,12 @@ module ocn_time_integration_split
                end if
             end if
          end do
+         if (config_use_benthosTracers) then
+            call mpas_pool_get_subpool(tendPool, 'seafloorTend', seafloorTendPool)
+!            call mpas_pool_get_array(seafloorTendPool, 'benthosTracersTend', benthosTracersTend)
+            call mpas_dmpar_field_halo_exch(domain, 'benthosTracersTend')
+         end if
+         
          call mpas_timer_stop("se halo tracers")
 
          call mpas_timer_start('se loop fini')
@@ -1821,10 +1828,10 @@ module ocn_time_integration_split
                   end if ! use tracer group
                end if ! tracer
             end do ! tracer group
+
             if (config_use_benthosTracers) then
                call mpas_pool_get_subpool(statePool, 'seafloorTracers', seafloorTracersPool)
                call mpas_pool_get_subpool(tendPool, 'seafloorTend', seafloorTendPool)
-         
                call mpas_pool_get_dimension(meshPool, 'nBenthicVertLevels', nBenthicVertLevels)
                call mpas_pool_get_array(seafloorTracersPool, 'benthosTracers', benthosTracersCur, 1)
                call mpas_pool_get_array(seafloorTracersPool, 'benthosTracers', benthosTracersNew, 2)
@@ -1837,7 +1844,7 @@ module ocn_time_integration_split
                   do iCell = 1, nCellsAll
                      do k = 1, nBenthicVertLevels+1
                         benthosTracersNew(:,k,iCell) = (benthosTracersCur(:,k,iCell) * benthosInterfaceLayerThickness(k) + dt &
-                                                      * benthosTracersTend(:,k,iCell) ) / benthosInterfaceLayerThickness(k)
+                           * benthosTracersTend(:,k,iCell) ) / benthosInterfaceLayerThickness(k)
  
                      end do
                    end do

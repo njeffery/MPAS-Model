@@ -55,7 +55,7 @@
 			description="if true, enables reaction terms"
 			possible_values=".true. or .false."
 		/>
-		<nml_option name="config_use_flux_correction" type="logical" default_value=".true." units="unitless"
+		<nml_option name="config_use_flux_correction" type="logical" default_value=".false." units="unitless"
 			description="if true, track transport flux errors in deep storage for conservation"
 			possible_values=".true. or .false."
 		/>
@@ -364,7 +364,7 @@
 			<var name="oceanBenthosPONaFlux" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
 				description="labile ocean particulate organic nitrogen sinking flux to the benthos"
 			/>
-			<var name="oceanBenthosPONaFlux" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
+			<var name="oceanBenthosPONbFlux" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
 				description="semi-labile ocean particulate organic nitrogen sinking flux to the benthos"
 			/>
 			<var name="oceanBenthosPONcFlux" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
@@ -460,11 +460,8 @@
 		</var_struct>
 
 		<var_struct name="benthosAuxiliary" time_levs="1" packages="benthosTracersPKG">
-			<var name="riverFluxSed" type="real" dimensions="nCells Time" units="kg m^{-2} m s^{-1}"
-				description="River Runoff Flux of Sediment"
-			/>
-			<var name="riverFluxPOC" type="real" dimensions="nCells Time" units="mmol C kg^{-1} m s^{-1}"
-				description="River Runoff Flux of Sediment"
+			<var name="benthosVertGridPoints" type="real" dimensions="nBenthicVertLevelsP1 Time" units=""
+				description="Vertical grid for the benthos tracers (positive down)"
 			/>
 		</var_struct>
 		<var_struct name="benthosSeaIceCoupling" time_levs="1" packages="benthosTracersPKG">
@@ -1787,15 +1784,165 @@
                         </var_array>
 		</var_struct> 
 		<var_struct name="benthosDiagFieldsLevel2" time_levs="1" packages="benthosTracersPKG">
-			<var name="benthos_diag_O2_PRODUCTION" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units="mmol O2 m^{-3} s^{-1}"
-				description="O2 Production"
-			/>
+			<var_array name="netBenthosRelErrorTransport" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="pocaNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Labile Particulate Organic Carbon net relative error due to transport"
+				/>
+				<var name="pocbNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Semi-Labile Particulate Organic Carbon net relative error due to transport"
+				/>
+				<var name="poccNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Refractory Particulate Organic Carbon net relative error due to transport"
+				/>
+				<var name="ponaNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Labile Particulate Organic Nitrogen net relative error due to transport"
+				/>
+				<var name="ponbNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Semi-Labile Particulate Organic Nitrogen net relative error due to transport"
+				/>
+				<var name="poncNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Refractory Particulate Organic Nitrogen net relative error due to transport"
+				/>
+				<var name="popaNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Labile Particulate Organic Phosphorus net relative error due to transport"
+				/>
+				<var name="popbNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Semi-Labile Particulate Organic Phosphorus net relative error due to transport"
+				/>
+				<var name="popcNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Refractory Particulate Organic Phosphorus net relative error due to transport"
+				/>
+				<var name="o2NetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Dissolved Oxygen net relative error due to transport"
+				/>
+				<var name="nh4NetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Dissolved ammonium net relative error due to transport"
+				/>
+				<var name="h2po4NetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Dissolved phosphate net relative error due to transport"
+				/>
+				<var name="co2NetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Dissolved carbon dioxide net relative error due to transport"
+				/>
+				<var name="no3NetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Dissolved nitrate net relative error due to transport"
+				/>
+				<var name="mno2aNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Particulate amorphous manganese oxyhydroxide net relative error due to transport"
+				/>
+				<var name="mno2bNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Particulate crystalline manganese oxyhydroxide net relative error due to transport"
+				/>
+				<var name="mnNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Dissolved manganese net relative error due to transport"
+				/>
+				<var name="feoh3aNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Particulate amorphous iron oxyhydroxide net relative error due to transport"
+				/>
+				<var name="feoh3bNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Particulate crystalline iron oxyhydroxide net relative error due to transport"
+				/>
+				<var name="feNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Dissolved Iron net relative error due to transport"
+				/>
+				<var name="fepaNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Particulate amorphous iron-bound phosphorus net relative error due to transport"
+				/>
+				<var name="fepbNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Particulate crystalline iron-bound phosphorus net relative error due to transport"
+				/>
+				<var name="so4NetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Dissolved sulfate net relative error due to transport"
+				/>
+				<var name="h2sNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Dissolved hydrogen sulfide net relative error due to transport"
+				/>
+				<var name="ch4NetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Dissolved methane net relative error due to transport"
+				/>
+				<var name="hco3NetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Dissolved bicarbonate net relative error due to transport"
+				/>
+				<var name="fesNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Particulate iron sulfide net relative error due to transport"
+				/>
+				<var name="fes2NetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Particulate pyrite net relative error due to transport"
+				/>
+				<var name="sNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Particulate elemental sulfur net relative error due to transport"
+				/>
+				<var name="caco3aNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Particulate calcite net relative error due to transport"
+				/>
+				<var name="caco3bNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Particulate aragonite net relative error due to transport"
+				/>
+				<var name="co3NetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Dissolved carbonate net relative error due to transport"
+				/>
+				<var name="camgco3NetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Particlate 15% magnesium calcite net relative error due to transport"
+				/>
+				<var name="dicNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Dissolved inorganic Carbon net relative error due to transport"
+				/>
+				<var name="alkNetRelErrorTransport" array_group="benthosRelErrorTransportGRP" units=""
+					description="Dissolved total alkalinity net relative error due to transport"
+				/>
+			 </var_array>
+ 			 <var_array name="netBenthosElementsRelError" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="netCarbonRelError" array_group="benthosElementsRelErrorGRP" units=""
+					description=" total relative error of  Carbon in the active benthos layer"
+				/>
+				<var name="netOxygenRelError" array_group="benthosElementsRelErrorGRP" units=""
+					description=" total relative error of  Oxygen in the active benthos layer"
+				/>
+				<var name="netNitrogenRelError" array_group="benthosElementsRelErrorGRP" units=""
+					description=" total relative error of  Nitrogen in the active benthos layer"
+				/>
+				<var name="netSulfurRelError" array_group="benthosElementsRelErrorGRP" units=""
+					description=" total relative error of  Sulfur in the active benthos layer"
+				/>
+				<var name="netPhosphorusRelError" array_group="benthosElementsRelErrorGRP" units=""
+					description=" total relative error of  Phosphorus in the active benthos layer"
+				/>
+				<var name="netManganeseRelError" array_group="benthosElementsRelErrorGRP" units=""
+					description=" total relative error of  Manganese in the active benthos layer"
+				/>
+				<var name="netIronRelError" array_group="benthosElementsRelErrorGRP" units=""
+					description=" total relative error of  Iron in the active benthos layer"
+				/>
+                        </var_array>      
+			<var_array name="netBenthosElementsRelErrorReactions" dimensions="nCells Time" type="real" packages="benthosTracersPKG" >
+				<!-- Add constituents of tracer group -->
+				<var name="netCarbonRelErrorReactions" array_group="benthosElementsRelErrorReactionsGRP" units=""
+					description=" relative error due to reactions of  Carbon in the active benthos layer"
+				/>
+				<var name="netOxygenRelErrorReactions" array_group="benthosElementsRelErrorReactionsGRP" units=""
+					description=" relative error due to reactions of  Oxygen in the active benthos layer"
+				/>
+				<var name="netNitrogenRelErrorReactions" array_group="benthosElementsRelErrorReactionsGRP" units=""
+					description=" relative error due to reactions of  Nitrogen in the active benthos layer"
+				/>
+				<var name="netSulfurRelErrorReactions" array_group="benthosElementsRelErrorReactionsGRP" units=""
+					description=" relative error due to reactions of  Sulfur in the active benthos layer"
+				/>
+				<var name="netPhosphorusRelErrorReactions" array_group="benthosElementsRelErrorReactionsGRP" units=""
+					description=" relative error due to reactions of  Phosphorus in the active benthos layer"
+				/>
+				<var name="netManganeseRelErrorReactions" array_group="benthosElementsRelErrorReactionsGRP" units=""
+					description=" relative error due to reactions of  Manganese in the active benthos layer"
+				/>
+				<var name="netIronRelErrorReactions" array_group="benthosElementsRelErrorReactionsGRP" units=""
+					description=" relative error due to reactions of  Iron in the active benthos layer"
+				/>
+                        </var_array>
 		</var_struct>
 		<var_struct name="benthosDiagFieldsLevel3" time_levs="1" packages="benthosTracersPKG">
-			<var name="benthos_diag_ponToSed" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units="mmol N m^{-3} m s^{-1}"
-				description="N Burial Flux to Sediments"
-			/>
-			<var name="benthos_diag_popToSed" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units="mmol P m^{-3} m s^{-1}"
+			<var name="benthos_diag_popToSed" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units=""
 				description="P Flux to Sediments"
 			/>
 			<var name="benthos_diag_bsiToSed" type="real" dimensions="nBenthicVertLevelsP1 nCells Time" units="mmol Si m^{-3} m s^{-1}"
