@@ -463,6 +463,9 @@
 			<var name="benthosVertGridPoints" type="real" dimensions="nBenthicVertLevelsP1 Time" units=""
 				description="Vertical grid for the benthos tracers (positive down)"
 			/>
+			<var name="indexToBenthosCells" type="integer" dimensions="nCells Time" units=""
+				description="points to cells used in the benthos BGC model"
+			/>
 		</var_struct>
 		<var_struct name="benthosSeaIceCoupling" time_levs="1" packages="benthosTracersPKG">
 			<var name="avgBenthosSurfaceDIC" type="real" dimensions="nCells Time" units="mmol C m^{-3}"
