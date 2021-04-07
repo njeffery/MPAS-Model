@@ -219,6 +219,47 @@
          snowage_kappa, & ! 
          snowage_drdt0    ! (10^-6 m/hr)
 
+      ! indices for aging lookup table [idx]
+      integer(kind=int_kind),  parameter, public :: &
+         idxTmax      = 5  , & ! maxiumum temperature index
+         idxTgrdmax   = 5  , & ! maxiumum temperature gradient index
+         idxrhosmax   = 1  , & ! maximum snow density index
+         iT_start     = 5  , & ! start of subset for T index
+         iTgrd_start  = 1  , & ! start of subset for Tgrd index
+         irhos_start  = 6      ! start of subset for rhos index
+
+      ! Subset of dry snow aging parameters
+      real(kind=dbl_kind), dimension(idxrhosmax, idxTgrdmax,idxTmax), public :: &
+           snowageTau = reshape((/ &
+           3.34947394_dbl_kind, 4.02124159_dbl_kind,    4.03328223_dbl_kind, &
+           3.02686921_dbl_kind, 2.14125851_dbl_kind,    3.97008737_dbl_kind, &
+           4.72725821_dbl_kind, 3.65313459_dbl_kind,    2.41198936_dbl_kind,  &
+           2.53065623e-1_dbl_kind, 4.60286630_dbl_kind, 4.99721440_dbl_kind, &
+           3.29168191_dbl_kind, 2.66426779e-1_dbl_kind, 9.15830596e-5_dbl_kind, &
+           5.33186128_dbl_kind, 4.90833452_dbl_kind,    1.55269141_dbl_kind, &
+           1.31225526e-3_dbl_kind,  9.36078196e-4_dbl_kind, 6.25428631_dbl_kind, &
+           5.04394794_dbl_kind, 2.92857366e-3_dbl_kind, 9.01488751e-3_dbl_kind,  &
+           1.19037046e-2_dbl_kind/), &
+           (/idxrhosmax, idxTgrdmax,idxTmax/))
+
+      real(kind=dbl_kind), dimension(idxrhosmax,idxTgrdmax,idxTmax), public :: &
+           snowageKappa = reshape((/ &
+           0.60824438, 0.56442972, 0.5527807,  0.64299537, 0.77672359, &
+           0.57105932, 0.52791041, 0.59868076, 0.7487191,  1.57946877, &
+           0.54236508, 0.52458285, 0.65520877, 1.52356017, 4.37789838, &
+           0.51449138, 0.54494334, 0.91628508, 3.28847035, 3.64418487, &
+           0.48538708, 0.55386601, 2.81247103, 2.72445522, 2.8230216/), &
+           (/idxrhosmax,idxTgrdmax,idxTmax/))
+
+      real(kind=dbl_kind), dimension(idxrhosmax,idxTgrdmax,idxTmax), public :: &
+           snowageDrdt0 = reshape((/ &
+           1.26597871, 1.26602416, 1.26613263, 1.26620414, 1.26629424, &
+           1.92418877, 1.92430063, 1.92445964, 1.92451557, 1.92469806, &
+           2.79086547, 2.79147315, 2.79137562, 2.79150846, 2.79216439, &
+           3.85605846, 3.85668001, 3.85844559, 3.86073682, 3.863199, &
+           5.0861907,  5.08765668, 5.09200195, 5.09665276, 5.10079895/), &
+           (/idxrhosmax,idxTgrdmax,idxTmax/))
+
 !-----------------------------------------------------------------------
 ! Parameters for biogeochemistry
 !-----------------------------------------------------------------------

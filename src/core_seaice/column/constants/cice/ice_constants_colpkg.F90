@@ -119,6 +119,10 @@
                                        ! over ridged ice, compared with level ice
          rhosmin   = 100.0_dbl_kind    ! minimum snow density (kg/m^3)
 
+      ! snow parameters
+      logical(kind=log_kind), parameter, public :: &
+           useSnowAgingTableSubset = .true. !  Use the netcdf table for dry metamorphism
+
       !-----------------------------------------------------------------
       ! numbers used in column package
       !-----------------------------------------------------------------

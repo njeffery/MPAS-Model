@@ -9,7 +9,7 @@
       use ice_kinds_mod
       use ice_constants_colpkg, only: puny, c0, c1, c10, rhos, Lfresh, &
                                       rhow, rhoi, rhofresh, snwlvlfac, &
-                                      rhosmin
+                                      rhosmin, useSnowAgingTableSubset
       use ice_warnings, only: add_warning
 
       implicit none
@@ -600,6 +600,7 @@
                                      Tsfc, zTin,  &
                                      hsn, zqsn, smice, smliq, &
                                      rsnw_fall, rsnw_tmax, &
+                                     l_stop, stop_label, &
                                      snowage_tau, &
                                      snowage_kappa, &
                                      snowage_drdt0, &
@@ -607,13 +608,13 @@
                                      idx_Tgrd_max, &
                                      idx_rhos_max)
 
+      use ice_colpkg_shared, only: snowageTau, snowageKappa, snowageDrdt0, idxTmax, idxTgrdmax, &
+             idxrhosmax, iT_start, iTgrd_start, irhos_start
+
       integer (kind=int_kind), intent(in) :: &
          ncat,   & ! number of categories
          nslyr,  & ! number of snow layers
-         nilyr, &  ! number of ice layers
-         idx_T_max, & ! dimensions of snow parameter matrix
-         idx_Tgrd_max, &
-         idx_rhos_max
+         nilyr     ! number of ice layers
 
       real (kind=dbl_kind), intent(in) :: &
          dt          ! time step
@@ -639,11 +640,21 @@
          rsnw_fall, & ! radius of newly fallen snow (10^-6 m)
          rsnw_tmax    ! maximum grain radius from dry metamorphism (10^-6 m)
 
+      logical (kind=log_kind), intent(out) :: &
+         l_stop          ! if true, print diagnostics and abort on return
+
+      character (len=*), intent(out) :: stop_label
+
       ! dry snow aging parameters
-      real (kind=dbl_kind), dimension(idx_rhos_max,idx_Tgrd_max,idx_T_max), intent(in) :: &
+      real (kind=dbl_kind), dimension(idx_rhos_max,idx_Tgrd_max,idx_T_max), intent(in), optional :: &
          snowage_tau,   & ! (10^-6 m)
          snowage_kappa, & !
          snowage_drdt0    ! (10^-6 m/hr)
+
+      integer (kind=int_kind), intent(in), optional :: &
+         idx_T_max, & ! dimensions of snow parameter matrix
+         idx_Tgrd_max, &
+         idx_rhos_max
 
       ! local temporary variables
 
@@ -652,6 +663,64 @@
       real (kind=dbl_kind), dimension(nslyr) :: &
          drsnw_wet,    & ! wet metamorphism (10^-6 m)
          drsnw_dry       ! dry (temperature gradient) metamorphism (10^-6 m)
+
+      ! dry snow aging parameters
+      
+      integer (kind=int_kind) :: &
+         idx_T,    & ! dimensions of snow parameter matrix used
+         idx_Tgrd, &
+         idx_rhos, &
+         iT, iTgrd, irhos
+
+      real (kind=dbl_kind), dimension(:,:,:), allocatable :: &
+         tau,   & ! (10^-6 m)
+         kappa, & !
+         drdt0    ! (10^-6 m/hr)
+
+      character(len=char_len_long) :: &
+         warning  
+
+      if (present(snowage_tau) .and. present(snowage_kappa) .and. present(snowage_drdt0) .and. &
+         present(idx_T_max) .and. present(idx_Tgrd_max) .and. present(idx_rhos_max) .and. &
+         .not.useSnowAgingTableSubset) then
+         idx_T = idx_T_max
+         idx_Tgrd = idx_Tgrd_max
+         idx_rhos = idx_rhos_max
+         allocate(tau(idx_rhos,idx_Tgrd,idx_T))
+         allocate(kappa(idx_rhos,idx_Tgrd,idx_T))
+         allocate(drdt0(idx_rhos,idx_Tgrd,idx_T))
+         do iT = 1,idx_T
+            do iTgrd = 1,idx_Tgrd
+               do irhos = 1,idx_rhos
+                  tau(irhos,iTgrd,iT) = snowage_tau(irhos,iTgrd,iT)
+                  kappa(irhos,iTgrd,iT) = snowage_kappa(irhos,iTgrd,iT)
+                  drdt0(irhos,iTgrd,iT) = snowage_drdt0(irhos,iTgrd,iT)
+               end do
+            end do
+         end do
+         iT = 0
+         iTgrd = 0
+         irhos = 0
+       else
+         idx_T = idxTmax
+         idx_Tgrd = idxTgrdmax
+         idx_rhos = idxrhosmax
+         allocate(tau(idx_rhos,idx_Tgrd,idx_T))
+         allocate(kappa(idx_rhos,idx_Tgrd,idx_T))
+         allocate(drdt0(idx_rhos,idx_Tgrd,idx_T))
+         do iT = 1,idx_T
+            do iTgrd = 1,idx_Tgrd
+               do irhos = 1,idx_rhos
+                  tau(irhos,iTgrd,iT) = snowageTau(irhos,iTgrd,iT)
+                  kappa(irhos,iTgrd,iT) = snowageKappa(irhos,iTgrd,iT)
+                  drdt0(irhos,iTgrd,iT) = snowageDrdt0(irhos,iTgrd,iT)
+               end do
+            end do
+         end do         
+         iT = iT_start-1
+         iTgrd = iTgrd_start-1
+         irhos = irhos_start-1
+       end if
 
       !-----------------------------------------------------------------
       ! dry metamorphism
@@ -665,8 +734,8 @@
 
               call snow_dry_metamorph (nslyr, nilyr, dt, rsnw(:,n), drsnw_dry, zqsn(:,n), Tsfc(n), &
                                        zTin(n), hsn(n), hin(n), smice(:,n),smliq(:,n), rsnw_fall, &
-                                       snowage_tau, snowage_kappa, snowage_drdt0, &
-                                       idx_T_max, idx_Tgrd_max, idx_rhos_max)
+                                       tau, kappa, drdt0, &
+                                       idx_T, idx_Tgrd, idx_rhos, iT, iTgrd, irhos, l_stop, stop_label)
 
       !-----------------------------------------------------------------
       ! wet metamorphism
@@ -683,9 +752,12 @@
                 smice(k,n) = rhos
                 smliq(k,n) = c0
               enddo
-
            endif
         enddo
+
+      deallocate(tau)
+      deallocate(kappa)
+      deallocate(drdt0)
 
       end subroutine update_snow_radius
 
@@ -696,7 +768,8 @@
       subroutine snow_dry_metamorph (nslyr,nilyr, dt, rsnw, drsnw_dry, zqsn, &
                                      Tsfc, zTin1, hsn, hin, smice, smliq, rsnw_fall, &
                                      snowage_tau, snowage_kappa, snowage_drdt0, &
-                                     idx_T_max, idx_Tgrd_max, idx_rhos_max)
+                                     idx_T_max, idx_Tgrd_max, idx_rhos_max, iT, iTgrd, irhos, &
+                                     l_stop, stop_label)
 
       use ice_constants_colpkg, only: c0, rhos, Tffresh, Lfresh, cp_ice, p5, puny, c10
       use ice_colpkg_shared, only: idx_T_min, idx_Tgrd_min, idx_rhos_min
@@ -719,7 +792,8 @@
          nilyr, &  ! number of ice layers
          idx_T_max, & ! dimensions of snow parameter matrix
          idx_Tgrd_max, &
-         idx_rhos_max
+         idx_rhos_max, &
+         iT, iTgrd, irhos ! shifts index when using subset of table
 
       real (kind=dbl_kind), intent(in) :: &
          dt                    ! time step (s)
@@ -747,6 +821,11 @@
          snowage_tau,   & ! (10^-6 m)
          snowage_kappa, & !
          snowage_drdt0    ! (10^-6 m/hr)
+
+      logical (kind=log_kind), intent(out) :: &
+         l_stop          ! if true, print diagnostics and abort on return
+
+      character (len=*), intent(out) :: stop_label
 
       ! local temporary variables
 
@@ -815,12 +894,12 @@
           zrhos(k) = smice(k) + smliq(k)
 
           ! best-fit table indecies:
-          T_idx    = nint(abs(zTsn(k)+ Tffresh - 223.0_dbl_kind) / 5.0_dbl_kind, kind=int_kind)
-          Tgrd_idx = nint(zdTdz(k) / 10.0_dbl_kind, kind=int_kind)
-          !rhos_idx = nint(zrhos(k)-50.0_dbl_kind) / 50.0_dbl_kind, kind=int_kind)   ! variable density
-          rhos_idx = nint((rhos-50.0_dbl_kind) / 50.0_dbl_kind, kind=int_kind)        ! fixed density
+          T_idx    = nint(abs(zTsn(k)+ Tffresh - 223.0_dbl_kind) / 5.0_dbl_kind, kind=int_kind) - iT
+          Tgrd_idx = nint(zdTdz(k) / 10.0_dbl_kind, kind=int_kind) - iTgrd
+          !rhos_idx = nint(zrhos(k)-50.0_dbl_kind) / 50.0_dbl_kind, kind=int_kind)
+          rhos_idx = nint((rhos-50.0_dbl_kind) / 50.0_dbl_kind, kind=int_kind) - irhos
 
-          ! boundary check:
+          ! boundary check and add 1 (from SnowSnicarMod.F90 in ELM):
           T_idx = min(idx_T_max, max(1,T_idx+1))!min(idx_T_max, max(idx_T_min,T_idx))
           Tgrd_idx = min(idx_Tgrd_max, max(1,Tgrd_idx+1))!min(idx_Tgrd_max, max(idx_Tgrd_min,Tgrd_idx))
           rhos_idx = min(idx_rhos_max, max(1,rhos_idx+1)) !min(idx_rhos_max, max(idx_rhos_min,rhos_idx))

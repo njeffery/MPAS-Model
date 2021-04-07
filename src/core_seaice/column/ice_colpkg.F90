@@ -4003,6 +4003,7 @@
                                       hsn,        zqsn,  &
                                       smice,      smliq, &
                                       rsnw_fall,  rsnw_tmax, &
+                                      l_stop, stop_label, &
                                       snowage_tau, &
                                       snowage_kappa, &
                                       snowage_drdt0, &
