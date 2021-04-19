@@ -493,7 +493,7 @@ contains
          meshPool,           &!< [in] mesh information
          verticalMeshPool     !< [in] verticalMesh information
 
-      real (kind=RKIND), dimension(:), pointer :: bottomDepth                                                        
+      real (kind=RKIND), dimension(:), pointer :: bottomDepth
       real (kind=RKIND), dimension(:), pointer :: benthosInterfaceLayerThickness
 
       integer, dimension(:), pointer :: maxLevelCell
@@ -573,7 +573,8 @@ contains
          config_use_tracerGroup_exponential_decay,    &
          config_use_tracerGroup_idealAge_forcing,     &
          config_use_tracerGroup_ttd_forcing,          &
-         config_use_benthosTracers
+         config_use_benthosTracers,                   &
+         config_use_ecosysTracers
 
       real (kind=RKIND), pointer :: &
          salinity_restoring_constant_piston_velocity
@@ -687,6 +688,7 @@ contains
       !$omp end parallel
 
       call mpas_pool_get_config(ocnConfigs, 'config_use_benthosTracers', config_use_benthosTracers)
+      call mpas_pool_get_config(ocnConfigs, 'config_use_ecosysTracers', config_use_ecosysTracers)
       call mpas_pool_get_array(meshPool, 'bottomDepth', bottomDepth)
       call mpas_pool_get_array(meshPool, 'maxLevelCell', maxLevelCell)
 
@@ -1160,13 +1162,24 @@ contains
 
             nBenthicTracers = size(benthosTracers, dim=1)
 
-            call benthos_tracer_compute(benthosTracers, benthosPhPrev3d, benthosTracersStorage, &
-               activeTracers, nBenthicTracers, ecosysTracers, benthosInterfaceLayerThickness, &
-               nTracersEcosys, statePool, tendPool, diagnosticsPool, forcingPool, &
-               nCellsSolve, nBenthicVertLevels, bottomDepth, density, maxLevelCell, &
-               nVertLevels, layerThickness, indexTemperature, indexSalinity, benthosTracersTend, dt, err)
-
+            if (config_use_ecosysTracers) then
+               call mpas_pool_get_array(tracersPool, 'ecosysTracers', ecosysTracers, timeLevel)
+               call benthos_tracer_compute(benthosTracers, benthosPhPrev3d, benthosTracersStorage, &
+                  activeTracers, nBenthicTracers, benthosInterfaceLayerThickness, &
+                  nTracersEcosys, statePool, tendPool, diagnosticsPool, forcingPool, &
+                  nCellsSolve, nBenthicVertLevels, bottomDepth, density, maxLevelCell, &
+                  nVertLevels, layerThickness, indexTemperature, indexSalinity, benthosTracersTend, &
+                  dt, err, config_use_ecosysTracers, ecosysTracers)
+            else
+               call benthos_tracer_compute(benthosTracers, benthosPhPrev3d, benthosTracersStorage, &
+                  activeTracers, nBenthicTracers, benthosInterfaceLayerThickness, &
+                  nTracersEcosys, statePool, tendPool, diagnosticsPool, forcingPool, &
+                  nCellsSolve, nBenthicVertLevels, bottomDepth, density, maxLevelCell, &
+                  nVertLevels, layerThickness, indexTemperature, indexSalinity, benthosTracersTend,&
+                  dt, err, config_use_ecosysTracers)
+            end if
          end if
+
          !
          ! Compute shortwave absorption
          !
@@ -1273,7 +1286,6 @@ contains
          ! frazil ice
          call ocn_frazil_forcing_tracers(meshPool, tracersPool, &
                      groupName, forcingPool, tracerGroupTend, err)
-
 
       end if ! config use flag on
       end if ! active only

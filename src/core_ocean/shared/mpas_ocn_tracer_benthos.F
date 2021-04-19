@@ -106,10 +106,11 @@ contains
 !-----------------------------------------------------------------------
 
    subroutine benthos_tracer_compute(benthosTracers, benthosPhPrev3d,benthosTracersStorage, &
-      activeTracers, nBenthicTracers, ecosysTracers, benthosInterfaceLayerThickness, &
+      activeTracers, nBenthicTracers, benthosInterfaceLayerThickness, &
       nEcosysTracers, statePool, tendPool, diagnosticsPool, forcingPool, &
       nCellsSolve, nBenthicVertLevels, bottomDepth, density, maxLevelCell, &
-      nVertLevels, layerThickness, indexTemperature, indexSalinity, benthosTracersTend,dt,err)!{{{
+      nVertLevels, layerThickness, indexTemperature, indexSalinity, benthosTracersTend,&
+      dt,err, config_use_ecosysTracers, ecosysTracers)!{{{
 
       !-----------------------------------------------------------------
       !
@@ -127,8 +128,9 @@ contains
          density
 
       ! three dimensional arrays
-      real (kind=RKIND), dimension(:,:,:), intent(in) :: &
-         ecosysTracers     ! ocean BGC
+      real (kind=RKIND), dimension(:,:,:), intent(in), optional :: &
+         ecosysTracers             ! ocean BGC
+
       real (kind=RKIND), dimension(:,:,:), intent(in) :: &
          activeTracers     ! T and S
 
@@ -149,6 +151,9 @@ contains
          indexSalinity
 
       real (KIND=RKIND), intent(in) :: dt
+
+      logical, intent(in) :: &
+         config_use_ecosysTracers
 
       type (mpas_pool_type), intent(in) :: &
          statePool
@@ -253,7 +258,7 @@ contains
          benthos_ponToSed,       &
          benthos_popToSed,       &
          benthos_pfeToSed,       &
-         pressure
+         pressure          
 
       real (kind=RKIND), dimension(:), pointer :: &
          oceanBottomBenthosSio3, &
@@ -313,7 +318,6 @@ contains
       call mpas_timer_start("benthos source-sink")
 
       call mpas_pool_get_subpool(forcingPool, 'benthosAuxiliary', benthosAuxiliaryPool)
-      call mpas_pool_get_subpool(forcingPool, 'ecosysBenthosForcing', ecosysBenthosForcingPool)
       call mpas_pool_get_subpool(forcingPool, 'oceanBenthosFlux', oceanBenthosFluxPool)
       call mpas_pool_get_subpool(forcingPool, 'oceanBottomBenthosFields', oceanBottomBenthosFieldsPool)
       call mpas_pool_get_subpool(forcingPool, 'oceanBenthosPrecipitation', oceanBenthosPrecipitationPool)
@@ -343,11 +347,15 @@ contains
       call mpas_pool_get_config(ocnConfigs, 'config_benthosTracers_diagnostic_fields_level2', &
               config_benthosTracers_diagnostic_fields_level2)
 
-      call mpas_pool_get_array(ecosysBenthosForcingPool, 'benthos_calcToSed', benthos_calcToSed)
-      call mpas_pool_get_array(ecosysBenthosForcingPool, 'benthos_pocToSed', benthos_pocToSed)
-      call mpas_pool_get_array(ecosysBenthosForcingPool, 'benthos_pfeToSed', benthos_pfeToSed)
-      call mpas_pool_get_array(ecosysBenthosForcingPool, 'benthos_popToSed', benthos_popToSed)
-      call mpas_pool_get_array(ecosysBenthosForcingPool, 'benthos_ponToSed', benthos_ponToSed)
+      if (config_use_ecosysTracers) then           
+         call mpas_pool_get_subpool(forcingPool, 'ecosysBenthosForcing', ecosysBenthosForcingPool)
+         call mpas_pool_get_array(ecosysBenthosForcingPool, 'benthos_calcToSed', benthos_calcToSed)
+         call mpas_pool_get_array(ecosysBenthosForcingPool, 'benthos_pocToSed', benthos_pocToSed)
+         call mpas_pool_get_array(ecosysBenthosForcingPool, 'benthos_pfeToSed', benthos_pfeToSed)
+         call mpas_pool_get_array(ecosysBenthosForcingPool, 'benthos_popToSed', benthos_popToSed)
+         call mpas_pool_get_array(ecosysBenthosForcingPool, 'benthos_ponToSed', benthos_ponToSed)
+      end if
+
       call mpas_pool_get_array(diagnosticsPool, 'pressure', pressure)
 
       call mpas_pool_get_array(oceanBenthosFluxPool, 'oceanBenthosPOCaFlux', oceanBenthosPOCaFlux)
@@ -443,26 +451,37 @@ contains
          !
          ! will only be used if use_ocean_bottom_state = true, set in benthos_mod.F90        
          !
-         benthos_input%oceanBottomSilicate(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%sio3_ind, maxLevel, iCell))
-         benthos_input%oceanBottomPhosphate(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%po4_ind, maxLevel, iCell))
-         benthos_input%oceanBottomAmmonium(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%nh4_ind, maxLevel, iCell))
-         benthos_input%oceanBottomNitrate(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%no3_ind, maxLevel, iCell))
+         if (present(ecosysTracers)) then
+            benthos_input%oceanBottomSilicate(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%sio3_ind, maxLevel, iCell))
+            benthos_input%oceanBottomPhosphate(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%po4_ind, maxLevel, iCell))
+            benthos_input%oceanBottomAmmonium(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%nh4_ind, maxLevel, iCell))
+            benthos_input%oceanBottomNitrate(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%no3_ind, maxLevel, iCell))
 
-!            if ( benthos_input%oceanBottomNitrate(column) .lt. 0.0_RKIND) then
-!                call mpas_log_write('ecosysTracers(ecosysBenthosIndices%no3_ind,maxLevel,iCell): $r',MPAS_LOG_ERR,realArgs=(/ecosysTracers(ecosysBenthosIndices%no3_ind,maxLevel,iCell)/))
-!                call mpas_log_write('ecosysBenthosIndices%no3_ind: $i',MPAS_LOG_ERR,intArgs=(/ecosysBenthosIndices%no3_ind/))
-!                call mpas_log_write('maxLevel: $i',MPAS_LOG_ERR,intArgs=(/maxLevel/))
-!                call mpas_log_write('iCell: $i',MPAS_LOG_ERR,intArgs=(/iCell/))
-!            end if
-         benthos_input%oceanBottomOxygen(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%o2_ind, maxLevel, iCell))
-         benthos_input%oceanBottomIron(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%fe_ind, maxLevel, iCell))
-         benthos_input%oceanBottomDIC(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%dic_ind, maxLevel, iCell))
-         benthos_input%oceanBottomAlkalinity(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%alk_ind, maxLevel, iCell))
-         benthos_input%oceanPOCFlux(column) = max(0.0_RKIND,benthos_pocToSed(maxLevel,iCell))
-         benthos_input%oceanParticulateIronFlux(column) = max(0.0_RKIND,benthos_pfeToSed(maxLevel,iCell))
-         benthos_input%oceanCalciteFlux(column) = max(0.0_RKIND,benthos_calcToSed(maxLevel,iCell))
-         benthos_input%oceanPONFlux(column) = max(0.0_RKIND,benthos_ponToSed(maxLevel,iCell))
-         benthos_input%oceanPOPFlux(column) = max(0.0_RKIND,benthos_popToSed(maxLevel,iCell))
+            benthos_input%oceanBottomOxygen(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%o2_ind, maxLevel, iCell))
+            benthos_input%oceanBottomIron(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%fe_ind, maxLevel, iCell))
+            benthos_input%oceanBottomDIC(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%dic_ind, maxLevel, iCell))
+            benthos_input%oceanBottomAlkalinity(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%alk_ind, maxLevel, iCell))
+            benthos_input%oceanPOCFlux(column) = max(0.0_RKIND,benthos_pocToSed(maxLevel,iCell))
+            benthos_input%oceanParticulateIronFlux(column) = max(0.0_RKIND,benthos_pfeToSed(maxLevel,iCell))
+            benthos_input%oceanCalciteFlux(column) = max(0.0_RKIND,benthos_calcToSed(maxLevel,iCell))
+            benthos_input%oceanPONFlux(column) = max(0.0_RKIND,benthos_ponToSed(maxLevel,iCell))
+            benthos_input%oceanPOPFlux(column) = max(0.0_RKIND,benthos_popToSed(maxLevel,iCell))
+         else
+            benthos_input%oceanBottomSilicate(column) = 0.0_RKIND
+            benthos_input%oceanBottomPhosphate(column) = 0.0_RKIND
+            benthos_input%oceanBottomAmmonium(column) = 0.0_RKIND
+            benthos_input%oceanBottomNitrate(column) = 0.0_RKIND
+
+            benthos_input%oceanBottomOxygen(column) = 0.0_RKIND
+            benthos_input%oceanBottomIron(column) = 0.0_RKIND
+            benthos_input%oceanBottomDIC(column) = 0.0_RKIND
+            benthos_input%oceanBottomAlkalinity(column) = 0.0_RKIND
+            benthos_input%oceanPOCFlux(column) = 0.0_RKIND
+            benthos_input%oceanParticulateIronFlux(column) = 0.0_RKIND
+            benthos_input%oceanCalciteFlux(column) = 0.0_RKIND
+            benthos_input%oceanPONFlux(column) = 0.0_RKIND
+            benthos_input%oceanPOPFlux(column) = 0.0_RKIND
+         endif
          benthos_input%deepStorage(column,benthos_indices%poca_ind) = benthosTracersStorage(benthosIndices%poca_ind,iCell)
          benthos_input%deepStorage(column,benthos_indices%pocb_ind) = benthosTracersStorage(benthosIndices%pocb_ind,iCell)
          benthos_input%deepStorage(column,benthos_indices%pocc_ind) = benthosTracersStorage(benthosIndices%pocc_ind,iCell)
@@ -643,43 +662,9 @@ contains
          oceanBenthosPrecipFepa(iCell) = benthos_output%oceanPrecipIronBoundPhosphorusa(column)
          oceanBenthosPrecipFepb(iCell) = benthos_output%oceanPrecipIronBoundPhosphorusb(column)
 
-!         if (oceanBottomBenthosDepth(iCell) .lt. 50.0_RKIND .and.  &
-!            oceanBottomBenthosTemperature(iCell) .lt. 0.0_RKIND) then
-!            call mpas_log_write('iCell: $i',MPAS_LOG_ERR,intArgs=(/iCell/))
-!            call mpas_log_write('oceanBottomBenthosDepth(iCell): $r',MPAS_LOG_ERR,realArgs=(/oceanBottomBenthosDepth(iCell)/))
-!            call mpas_log_write('oceanBottomBenthosTemperature(iCell): $r',MPAS_LOG_ERR,realArgs=(/oceanBottomBenthosTemperature(iCell)/))
-!            call mpas_log_write('maxLevel: $i',MPAS_LOG_ERR,intArgs=(/maxLevel/))
-!            call mpas_log_write('iCell: $i',MPAS_LOG_ERR,intArgs=(/iCell/))
-!         end if
-!         if (iCell .eq. 1) then
-!            call mpas_log_write('For iCell=1, output tendencies',MPAS_LOG_ERR)
-!            call mpas_log_write('iCell: $i',MPAS_LOG_ERR,intArgs=(/iCell/))
-!            do iTracer=1,nBenthicTracers
-!               if (iTracer == 12 .or. iTracer == 25) then
-!                  call mpas_log_write('iTracer: $i',MPAS_LOG_ERR,intArgs=(/iTracer/))
-!                  do iLevel = 1,nBenthicVertLevels+1
-!                     call mpas_log_write('iLevel: $i',MPAS_LOG_ERR,intArgs=(/iLevel/))
-!                     call mpas_log_write('benthosIndices%h2po4_ind: $i',MPAS_LOG_ERR,intArgs=(/benthosIndices%h2po4_ind/))
-!                     call mpas_log_write('benthos_indices%h2po4_ind: $i',MPAS_LOG_ERR,intArgs=(/benthos_indices%h2po4_ind/))
-!                     call mpas_log_write('benthosIndices%ch4_ind: $i',MPAS_LOG_ERR,intArgs=(/benthosIndices%ch4_ind/))
-!                     call mpas_log_write('benthos_indices%ch4_ind: $i',MPAS_LOG_ERR,intArgs=(/benthos_indices%ch4_ind/))
-!                     call mpas_log_write('benthos_output%benthosTendencies(iLevel,column,iTracer): $r',MPAS_LOG_ERR,realArgs=(/benthos_output%benthosTendencies(iLevel,column,iTracer)/))
-!                     call mpas_log_write('benthos_output%benthosTransportTendencies(iLevel,column,iTracer): $r',MPAS_LOG_ERR,realArgs=(/benthos_output%benthosTransportTendencies(iLevel,column,iTracer)/))
-!                     call mpas_log_write('benthos_output%benthosReactionTendencies(iLevel,column,iTracer): $r',MPAS_LOG_ERR,realArgs=(/benthos_output%benthosReactionTendencies(iLevel,column,iTracer)/))
-!                     call mpas_log_write('benthosInterfaceLayerThickness(iLevel): $r',MPAS_LOG_ERR,realArgs=(/benthosInterfaceLayerThickness(iLevel)/))
-!                     call mpas_log_write('benthosPhPrev3d(iLevel,iCell): $r',MPAS_LOG_ERR,realArgs=(/benthosPhPrev3d(iLevel,iCell)/))
-!                     call mpas_log_write('initial benthosTracersTend(iTracer,iLevel,iCell): $r',MPAS_LOG_ERR,realArgs=(/benthosTracersTend(iTracer,iLevel,iCell)/))
-!                     call mpas_log_write('benthos_input%benthosTracerBulk(iLevel,column,iTracer): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%benthosTracerBulk(iLevel,column,iTracer)/))
-!                     call mpas_log_write('benthosTracers(iTracers,iLevel,iCell): $r',MPAS_LOG_ERR,realArgs=(/benthosTracers(iTracer,iLevel,iCell)/))
-!                  end do
-!               end if
-!            end do
-!         end if
-
          do iLevel=1,nBenthicVertLevels+1
 
             benthosPhPrev3d(iLevel,iCell) = benthos_output%PH_PREV_3D(iLevel,column)
-
 
             benthosTracersTend(benthosIndices%poca_ind,iLevel,iCell) =  &
             benthosTracersTend(benthosIndices%poca_ind,iLevel,iCell)   &
@@ -1241,7 +1226,8 @@ contains
           config_use_flux_correction, &
           config_use_ocean_conc, &
           config_use_deep_source, &
-          config_use_constant_diffusivity
+          config_use_constant_diffusivity, &
+          config_use_ecosysTracers
 
       ! local variables
 
@@ -1476,69 +1462,101 @@ contains
 !      call mpas_pool_get_dimension(tracersPool, 'index_DMSP', index_dummy)
 !      dmsIndices%dmsp_ind = index_dummy
 
-      call mpas_pool_get_dimension(tracersPool, 'index_PO4',      index_dummy)
-      ecosysBenthosIndices%po4_ind             = index_dummy
-      
-!      call mpas_log_write('test get dimension : ecosysBenthosIndices%po4_ind = $i',MPAS_LOG_ERR,intArgs=(/ecosysBenthosIndices%po4_ind/))
-
-      call mpas_pool_get_dimension(tracersPool, 'index_NO3',      index_dummy)
-      ecosysBenthosIndices%no3_ind             = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_SiO3',     index_dummy)
-      ecosysBenthosIndices%sio3_ind            = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_NH4',      index_dummy)
-      ecosysBenthosIndices%nh4_ind             = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_Fe',       index_dummy)
-      ecosysBenthosIndices%fe_ind              = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_O2',       index_dummy)
-      ecosysBenthosIndices%o2_ind              = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_DIC',      index_dummy)
-      ecosysBenthosIndices%dic_ind             = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_DIC_ALT_CO2', index_dummy)
-      ecosysBenthosIndices%dic_alt_co2_ind     = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_ALK',      index_dummy)
-      ecosysBenthosIndices%alk_ind             = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_DOC',      index_dummy)
-      ecosysBenthosIndices%doc_ind             = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_DON',      index_dummy)
-      ecosysBenthosIndices%don_ind             = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_DOFe',     index_dummy)
-      ecosysBenthosIndices%dofe_ind            = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_DOP',      index_dummy)
-      ecosysBenthosIndices%dop_ind             = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_DOPr',     index_dummy)
-      ecosysBenthosIndices%dopr_ind            = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_DONr',     index_dummy)
-      ecosysBenthosIndices%donr_ind            = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_zooC',     index_dummy)
-      ecosysBenthosIndices%zooC_ind            = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_spChl',    index_dummy)
-      ecosysBenthosIndices%spChl_ind           = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_spC',      index_dummy)
-      ecosysBenthosIndices%spC_ind             = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_spFe',     index_dummy)
-      ecosysBenthosIndices%spFe_ind            = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_spCaCO3',  index_dummy)
-      ecosysBenthosIndices%spCaCO3_ind         = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_diatChl',  index_dummy)
-      ecosysBenthosIndices%diatChl_ind         = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_diatC',    index_dummy)
-      ecosysBenthosIndices%diatC_ind           = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_diatFe',   index_dummy)
-      ecosysBenthosIndices%diatFe_ind          = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_diatSi',   index_dummy)
-      ecosysBenthosIndices%diatSi_ind          = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_diazChl',  index_dummy)
-      ecosysBenthosIndices%diazChl_ind         = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_diazC',    index_dummy)
-      ecosysBenthosIndices%diazC_ind           = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_diazFe',   index_dummy)
-      ecosysBenthosIndices%diazFe_ind          = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_phaeoChl', index_dummy)
-      ecosysBenthosIndices%phaeoChl_ind        = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_phaeoC',   index_dummy)
-      ecosysBenthosIndices%phaeoC_ind          = index_dummy
-      call mpas_pool_get_dimension(tracersPool, 'index_phaeoFe',  index_dummy)
-      ecosysBenthosIndices%phaeoFe_ind         = index_dummy
+      call mpas_pool_get_config(ocnConfigs, 'config_use_ecosysTracers',  config_use_ecosysTracers)
+      if (config_use_ecosysTracers) then
+         call mpas_pool_get_dimension(tracersPool, 'index_PO4',      index_dummy)
+         ecosysBenthosIndices%po4_ind             = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_NO3',      index_dummy)
+         ecosysBenthosIndices%no3_ind             = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_SiO3',     index_dummy)
+         ecosysBenthosIndices%sio3_ind            = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_NH4',      index_dummy)
+         ecosysBenthosIndices%nh4_ind             = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_Fe',       index_dummy)
+         ecosysBenthosIndices%fe_ind              = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_O2',       index_dummy)
+         ecosysBenthosIndices%o2_ind              = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_DIC',      index_dummy)
+         ecosysBenthosIndices%dic_ind             = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_DIC_ALT_CO2', index_dummy)
+         ecosysBenthosIndices%dic_alt_co2_ind     = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_ALK',      index_dummy)
+         ecosysBenthosIndices%alk_ind             = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_DOC',      index_dummy)
+         ecosysBenthosIndices%doc_ind             = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_DON',      index_dummy)
+         ecosysBenthosIndices%don_ind             = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_DOFe',     index_dummy)
+         ecosysBenthosIndices%dofe_ind            = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_DOP',      index_dummy)
+         ecosysBenthosIndices%dop_ind             = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_DOPr',     index_dummy)
+         ecosysBenthosIndices%dopr_ind            = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_DONr',     index_dummy)
+         ecosysBenthosIndices%donr_ind            = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_zooC',     index_dummy)
+         ecosysBenthosIndices%zooC_ind            = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_spChl',    index_dummy)
+         ecosysBenthosIndices%spChl_ind           = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_spC',      index_dummy)
+         ecosysBenthosIndices%spC_ind             = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_spFe',     index_dummy)
+         ecosysBenthosIndices%spFe_ind            = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_spCaCO3',  index_dummy)
+         ecosysBenthosIndices%spCaCO3_ind         = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_diatChl',  index_dummy)
+         ecosysBenthosIndices%diatChl_ind         = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_diatC',    index_dummy)
+         ecosysBenthosIndices%diatC_ind           = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_diatFe',   index_dummy)
+         ecosysBenthosIndices%diatFe_ind          = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_diatSi',   index_dummy)
+         ecosysBenthosIndices%diatSi_ind          = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_diazChl',  index_dummy)
+         ecosysBenthosIndices%diazChl_ind         = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_diazC',    index_dummy)
+         ecosysBenthosIndices%diazC_ind           = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_diazFe',   index_dummy)
+         ecosysBenthosIndices%diazFe_ind          = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_phaeoChl', index_dummy)
+         ecosysBenthosIndices%phaeoChl_ind        = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_phaeoC',   index_dummy)
+         ecosysBenthosIndices%phaeoC_ind          = index_dummy
+         call mpas_pool_get_dimension(tracersPool, 'index_phaeoFe',  index_dummy)
+         ecosysBenthosIndices%phaeoFe_ind         = index_dummy
+      else
+         index_dummy = 1
+         ecosysBenthosIndices%po4_ind             = index_dummy
+         ecosysBenthosIndices%no3_ind             = index_dummy
+         ecosysBenthosIndices%sio3_ind            = index_dummy
+         ecosysBenthosIndices%nh4_ind             = index_dummy
+         ecosysBenthosIndices%fe_ind              = index_dummy
+         ecosysBenthosIndices%o2_ind              = index_dummy
+         ecosysBenthosIndices%dic_ind             = index_dummy
+         ecosysBenthosIndices%dic_alt_co2_ind     = index_dummy
+         ecosysBenthosIndices%alk_ind             = index_dummy
+         ecosysBenthosIndices%doc_ind             = index_dummy
+         ecosysBenthosIndices%don_ind             = index_dummy
+         ecosysBenthosIndices%dofe_ind            = index_dummy
+         ecosysBenthosIndices%dop_ind             = index_dummy
+         ecosysBenthosIndices%dopr_ind            = index_dummy
+         ecosysBenthosIndices%donr_ind            = index_dummy
+         ecosysBenthosIndices%zooC_ind            = index_dummy
+         ecosysBenthosIndices%spChl_ind           = index_dummy
+         ecosysBenthosIndices%spC_ind             = index_dummy
+         ecosysBenthosIndices%spFe_ind            = index_dummy
+         ecosysBenthosIndices%spCaCO3_ind         = index_dummy
+         ecosysBenthosIndices%diatChl_ind         = index_dummy
+         ecosysBenthosIndices%diatC_ind           = index_dummy
+         ecosysBenthosIndices%diatFe_ind          = index_dummy
+         ecosysBenthosIndices%diatSi_ind          = index_dummy
+         ecosysBenthosIndices%diazChl_ind         = index_dummy
+         ecosysBenthosIndices%diazC_ind           = index_dummy
+         ecosysBenthosIndices%diazFe_ind          = index_dummy
+         ecosysBenthosIndices%phaeoChl_ind        = index_dummy
+         ecosysBenthosIndices%phaeoC_ind          = index_dummy
+         ecosysBenthosIndices%phaeoFe_ind         = index_dummy
+      end if
 
 !      call mpas_log_write('test get dimension : ecosysBenthosIndices%phaeoFe_ind = $i',MPAS_LOG_ERR,intArgs=(/ecosysBenthosIndices%phaeoFe_ind/))
 
@@ -1573,7 +1591,7 @@ contains
            config_use_deep_source, config_use_constant_diffusivity)
            
 !NJ-TEST: VERIFIED
-test_flag = .true.
+test_flag = .false.
       if (test_flag) then
          call mpas_log_write('test benthos_flags_init')
          call mpas_log_write('config_set_benthos_flags: $i',MPAS_LOG_ERR,intArgs=(/config_set_benthos_flags/))
