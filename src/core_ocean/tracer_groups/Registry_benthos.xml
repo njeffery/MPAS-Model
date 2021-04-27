@@ -71,6 +71,14 @@
 			description="if true, diffusivity becomes constant with depth"
 			possible_values=".true. or .false."
 		/>
+		<nml_option name="config_use_ocean_bottom_state" type="logical" default_value=".false." units="unitless"
+			description="if true, use the ocean ecosys model to force the benthos"
+			possible_values=".true. or .false."
+		/>
+		<nml_option name="config_use_benthos_monthly_forcing" type="logical" default_value=".false." units="unitless"
+			description="if true, use monthly data file of ocean fluxes and concentrations"
+			possible_values=".true. or .false."
+		/>
 		<nml_option name="config_benthosTracers_diagnostic_fields_level1" type="logical" default_value=".false." units="unitless"
 			description="if true, make variables in benthosDiagFieldsLevel1 available for output"
 			possible_values=".true. or .false."
@@ -343,6 +351,9 @@
 			/>
 		</var_struct>
 		<var_struct name="oceanBenthosFlux" time_levs="1">
+			<var name="oceanBenthosPOCFlux" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
+				description="total ocean particulate organic carbon sinking flux to the benthos"
+			/>
 			<var name="oceanBenthosPOCaFlux" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
 				description="labile ocean particulate organic carbon sinking flux to the benthos"
 			/>
@@ -373,6 +384,9 @@
 			<var name="oceanBenthosParticulateFeFlux" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
 				description="ocean particulate iron sinking flux to the benthos"
 			/>
+			<var name="oceanBenthosPICFlux" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
+				description="Total ocean particulate inorganic carbon sinking flux to the benthos"
+			/>
 			<var name="oceanBenthosCaco3aFlux" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
 				description="ocean particulate calcite sinking flux to the benthos"
 			/>
@@ -382,11 +396,17 @@
 			<var name="oceanBenthosMgCaco3Flux" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
 				description="ocean particulate 15% magnesium calcite sinking flux to the benthos"
 			/>
+			<var name="oceanBenthosMno2Flux" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
+				description="total ocean particulate manganese oxide  sinking flux to the benthos"
+			/>
 			<var name="oceanBenthosMno2aFlux" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
 				description="ocean particulate manganese oxide-a  sinking flux to the benthos"
 			/>
 			<var name="oceanBenthosMno2bFlux" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
 				description="ocean particulate manganese oxide-b  sinking flux to the benthos"
+			/>
+			<var name="oceanBenthosFeoh3Flux" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
+				description="total ocean particulate iron oxyhydroxide sinking flux to the benthos"
 			/>
 			<var name="oceanBenthosFeoh3aFlux" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
 				description="ocean particulate iron oxyhydroxide-a  sinking flux to the benthos"
@@ -490,6 +510,69 @@
 				description="Surface dissolved bioavailable Fe flux from sea ice"
 			/>
 		</var_struct>
+	</var_struct>
+
+	<var_struct name="benthosMonthlyForcing" time_levs="1">
+		<var name="oceanBenthosPOCFluxData" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
+			description="Ocean particulate organic carbon sinking flux to the benthos"
+		/>
+		<var name="oceanBenthosPICFluxData" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
+			description="Ocean particulate calcite, aragonite and mg-calcite flux to the benthos"
+		/>
+		<var name="oceanBenthosMno2FluxData" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
+			description="Ocean manganese oxide sinking flux to the benthos"
+		/>
+		<var name="oceanBenthosFeoh3FluxData" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
+			description="Ocean iron oxyhydroxide  sinking flux to the benthos"
+		/>
+		<var name="oceanBenthosPrecipMno2Data" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
+			description="Ocean manganese oxide precipitation flux to the benthos"
+		/>
+		<var name="oceanBenthosPrecipFeoh3Data" type="real" dimensions="nCells Time" units="mmol(m kg^{-1}) s^{-1}"
+			description="Ocean iron oxyhydroxide precipitation flux to the benthos"
+		/>
+		<var name="oceanBottomBenthosSio3Data" type="real" dimensions="nCells Time" units="mmol m^{-3}"
+			description="ocean bottom silicate used in benthos module"
+		/>
+		<var name="oceanBottomBenthosPo4Data" type="real" dimensions="nCells Time" units="mmol P m^{-3}"
+			description="ocean bottom phosphate concentration used in benthos module"
+		/>
+		<var name="oceanBottomBenthosNh4Data" type="real" dimensions="nCells Time" units="mmol N m^{-3}"
+			description="ocean bottom ammonium concentration used in benthos module"
+		/>
+		<var name="oceanBottomBenthosNo3Data" type="real" dimensions="nCells Time" units="mmol N m^{-3}"
+			description="ocean bottom nitrate concentration used in benthos module"
+		/>
+		<var name="oceanBottomBenthosO2Data" type="real" dimensions="nCells Time" units="mmol O2 m^{-3}"
+			description="ocean bottom oxygen concentration used in benthos module"
+		/>
+		<var name="oceanBottomBenthosFeData" type="real" dimensions="nCells Time" units="mmol Fe m^{-3}"
+			description="ocean bottom dissolved iron concentration used in benthos module"
+		/>
+		<var name="oceanBottomBenthosMnData" type="real" dimensions="nCells Time" units="mmol Mn m^{-3}"
+			description="ocean bottom manganese concentration used in benthos module"
+		/>
+		<var name="oceanBottomBenthosSo4Data" type="real" dimensions="nCells Time" units="mmol S m^{-3}"
+			description="ocean bottom sulfate concentration used in benthos module"
+		/>
+		<var name="oceanBottomBenthosDICData" type="real" dimensions="nCells Time" units="mmol C m^{-3}"
+			description="ocean bottom DIC concentration used in benthos module"
+		/>
+		<var name="oceanBottomBenthosAlkData" type="real" dimensions="nCells Time" units="meq m^{-3}"
+			description="ocean bottom alkalinity concentration used in benthos module"
+		/>
+		<var name="oceanBottomBenthosTemperatureData" type="real" dimensions="nCells Time" units="oC"
+			description="ocean bottom temperature used in benthos module"
+		/>
+		<var name="oceanBottomBenthosSalinityData" type="real" dimensions="nCells Time" units="psu"
+			description="ocean bottom salinity used in benthos module"
+		/>
+		<var name="oceanBottomBenthosPressureData" type="real" dimensions="nCells Time" units="N m^{-2}"
+			description="ocean bottom pressure used in benthos module"
+		/>
+		<var name="oceanBottomBenthosDensityData" type="real" dimensions="nCells Time" units="kg m^{-3}"
+			description="ocean bottom density used in benthos module"
+		/>
 	</var_struct>
 
 	<var_struct name="tend" time_levs="1">

@@ -500,7 +500,15 @@ module ocn_forward_mode
 
       type (MPAS_timeInterval_type) :: timeStep
 
+
       ierr = 0
+
+
+     ! logical, pointer :: config_use_benthosTracers
+     ! logical, pointer :: config_use_benthos_monthly_forcing
+
+     ! call mpas_pool_get_config(domain % configs, 'config_use_benthosTracers', config_use_benthosTracers)
+     ! call mpas_pool_get_config(domain % configs, 'config_use_benthos_monthly_forcing', config_use_benthos_monthly_forcing)
 
       ! Eventually, dt should be domain specific
       timeStep = mpas_get_clock_timestep(domain % clock, ierr=ierr)
@@ -529,6 +537,13 @@ module ocn_forward_mode
         call mpas_timer_start('io_ecosys',.false.)
         call ocn_get_ecosysData(domain % streamManager, domain, domain % clock, .true.)
         call mpas_timer_stop('io_ecosys')
+      endif
+
+      ! read initial data required for ecosys forcing
+      if (config_use_benthosTracers .and. config_use_benthos_monthly_forcing) then
+        call mpas_timer_start('io_benthos',.false.)
+        call ocn_get_benthos_data(domain % streamManager, domain, domain % clock, .true.)
+        call mpas_timer_stop('io_benthos')
       endif
 
       ! read initial data required for monthly surface salinity restoring
@@ -642,7 +657,8 @@ module ocn_forward_mode
                 config_use_ecosysTracers .or. &
                 (config_use_activeTracers_surface_restoring .and. config_use_surface_salinity_monthly_restoring) .or. &
                 config_use_time_varying_atmospheric_forcing .or. &
-                config_use_time_varying_land_ice_forcing) then
+                config_use_time_varying_land_ice_forcing .or. &
+                config_use_benthosTracers) then
 
                 call ocn_time_varying_forcing_write_restart_times(domain)
             end if
@@ -674,6 +690,13 @@ module ocn_forward_mode
            call mpas_timer_start('io_ecosys',.false.)
            call ocn_get_ecosysData(domain % streamManager, domain, domain % clock, .false.)
            call mpas_timer_stop('io_ecosys')
+         endif
+
+         ! read next time level data required for benthos forcing
+         if (config_use_benthosTracers .and. config_use_benthos_monthly_forcing) then
+            call mpas_timer_start('io_benthos',.false.)
+            call ocn_get_benthos_data(domain % streamManager, domain, domain % clock, .false.)
+            call mpas_timer_stop('io_benthos')
          endif
 
          ! read next time level data required for monthly surface salinity restoring

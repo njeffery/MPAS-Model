@@ -221,6 +221,7 @@ contains
          config_use_ocean_conc, &
          config_use_deep_source, &
          config_use_constant_diffusivity, &
+         config_use_benthos_monthly_forcing, &
          config_benthosTracers_diagnostic_fields_level1, &
          config_benthosTracers_diagnostic_fields_level2
 
@@ -342,6 +343,7 @@ contains
       call mpas_pool_get_config(ocnConfigs, 'config_use_flux_correction',  config_use_flux_correction)
       call mpas_pool_get_config(ocnConfigs, 'config_use_deep_source',  config_use_deep_source)
       call mpas_pool_get_config(ocnConfigs, 'config_use_constant_diffusivity',  config_use_constant_diffusivity)
+      call mpas_pool_get_config(ocnConfigs, 'config_use_benthos_monthly_forcing', config_use_benthos_monthly_forcing)
       call mpas_pool_get_config(ocnConfigs, 'config_benthosTracers_diagnostic_fields_level1', &
               config_benthosTracers_diagnostic_fields_level1)
       call mpas_pool_get_config(ocnConfigs, 'config_benthosTracers_diagnostic_fields_level2', &
@@ -438,50 +440,74 @@ contains
       numColumns = 1
       column = 1
 !     DWJ 08/05/2016: This loop needs OpenMP added to it.
-      
+
+
       do iCellBenthic=1,nBenthicCells
          iCell = indexToBenthosCells(iCellBenthic)
          benthos_input%bottom_level(column) = maxLevelCell(iCell)
          maxLevel = maxLevelCell(iCell)
-         benthos_input%oceanBottomDensity(column) = density(maxLevel,iCell)
          benthos_input%oceanBottomDepth(column) =  bottomDepth(iCell)
-         benthos_input%oceanBottomPressure(column) =  pressure(maxLevel,iCell)
-         benthos_input%oceanBottomTemperature(column) = activeTracers(indexTemperature, maxLevel, iCell)
-         benthos_input%oceanBottomSalinity(column) = activeTracers(indexSalinity, maxLevel, iCell)
-         !
-         ! will only be used if use_ocean_bottom_state = true, set in benthos_mod.F90        
-         !
-         if (present(ecosysTracers)) then
-            benthos_input%oceanBottomSilicate(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%sio3_ind, maxLevel, iCell))
-            benthos_input%oceanBottomPhosphate(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%po4_ind, maxLevel, iCell))
-            benthos_input%oceanBottomAmmonium(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%nh4_ind, maxLevel, iCell))
-            benthos_input%oceanBottomNitrate(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%no3_ind, maxLevel, iCell))
 
-            benthos_input%oceanBottomOxygen(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%o2_ind, maxLevel, iCell))
-            benthos_input%oceanBottomIron(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%fe_ind, maxLevel, iCell))
-            benthos_input%oceanBottomDIC(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%dic_ind, maxLevel, iCell))
-            benthos_input%oceanBottomAlkalinity(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%alk_ind, maxLevel, iCell))
-            benthos_input%oceanPOCFlux(column) = max(0.0_RKIND,benthos_pocToSed(maxLevel,iCell))
-            benthos_input%oceanParticulateIronFlux(column) = max(0.0_RKIND,benthos_pfeToSed(maxLevel,iCell))
-            benthos_input%oceanCalciteFlux(column) = max(0.0_RKIND,benthos_calcToSed(maxLevel,iCell))
-            benthos_input%oceanPONFlux(column) = max(0.0_RKIND,benthos_ponToSed(maxLevel,iCell))
-            benthos_input%oceanPOPFlux(column) = max(0.0_RKIND,benthos_popToSed(maxLevel,iCell))
+         if (config_use_benthos_monthly_forcing) then
+            benthos_input%oceanBottomDensity(column) = oceanBottomBenthosDensity(iCell)
+            benthos_input%oceanBottomPressure(column) =  oceanBottomBenthosPressure(iCell)
+            benthos_input%oceanBottomTemperature(column) = oceanBottomBenthosTemperature(iCell)
+            benthos_input%oceanBottomSalinity(column) = oceanBottomBenthosSalinity(iCell)
+
+            benthos_input%oceanBottomSilicate(column) = oceanBottomBenthosSio3(iCell)
+            benthos_input%oceanBottomPhosphate(column) = oceanBottomBenthosPo4(iCell)
+            benthos_input%oceanBottomAmmonium(column) = oceanBottomBenthosNh4(iCell)
+            benthos_input%oceanBottomNitrate(column) = oceanBottomBenthosNo3(iCell)
+            benthos_input%oceanBottomOxygen(column) = oceanBottomBenthosO2(iCell)
+            benthos_input%oceanBottomIron(column) = oceanBottomBenthosFe(iCell)
+            benthos_input%oceanBottomDIC(column) = oceanBottomBenthosDIC(iCell)
+            benthos_input%oceanBottomAlkalinity(column) = oceanBottomBenthosAlk(iCell)
+
+            benthos_input%oceanPOCFlux(column) = oceanBenthosPOCFlux(iCell)
+            benthos_input%oceanParticulateIronFlux(column) = oceanBenthosFeoh3Flux(iCell)
+            benthos_input%oceanCalciteFlux(column) = oceanBenthosPICFlux(iCell)
+            !benthos_input%oceanPONFlux(column) = oceanBenthosPOCFlux(iCell) !!!!  Define later? 
+            !benthos_input%oceanPOPFlux(column) = oceanBenthosPOCFlux(iCell) !!!!
          else
-            benthos_input%oceanBottomSilicate(column) = 0.0_RKIND
-            benthos_input%oceanBottomPhosphate(column) = 0.0_RKIND
-            benthos_input%oceanBottomAmmonium(column) = 0.0_RKIND
-            benthos_input%oceanBottomNitrate(column) = 0.0_RKIND
+            benthos_input%oceanBottomDensity(column) = density(maxLevel,iCell)
+            benthos_input%oceanBottomPressure(column) =  pressure(maxLevel,iCell)
+            benthos_input%oceanBottomTemperature(column) = activeTracers(indexTemperature, maxLevel, iCell)
+            benthos_input%oceanBottomSalinity(column) = activeTracers(indexSalinity, maxLevel, iCell)
+            !
+            ! will only be used if use_ocean_bottom_state = true, set in benthos_mod.F90        
+            !
+            if (present(ecosysTracers)) then
+               benthos_input%oceanBottomSilicate(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%sio3_ind, maxLevel, iCell))
+               benthos_input%oceanBottomPhosphate(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%po4_ind, maxLevel, iCell))
+               benthos_input%oceanBottomAmmonium(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%nh4_ind, maxLevel, iCell))
+               benthos_input%oceanBottomNitrate(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%no3_ind, maxLevel, iCell))
 
-            benthos_input%oceanBottomOxygen(column) = 0.0_RKIND
-            benthos_input%oceanBottomIron(column) = 0.0_RKIND
-            benthos_input%oceanBottomDIC(column) = 0.0_RKIND
-            benthos_input%oceanBottomAlkalinity(column) = 0.0_RKIND
-            benthos_input%oceanPOCFlux(column) = 0.0_RKIND
-            benthos_input%oceanParticulateIronFlux(column) = 0.0_RKIND
-            benthos_input%oceanCalciteFlux(column) = 0.0_RKIND
-            benthos_input%oceanPONFlux(column) = 0.0_RKIND
-            benthos_input%oceanPOPFlux(column) = 0.0_RKIND
-         endif
+               benthos_input%oceanBottomOxygen(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%o2_ind, maxLevel, iCell))
+               benthos_input%oceanBottomIron(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%fe_ind, maxLevel, iCell))
+               benthos_input%oceanBottomDIC(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%dic_ind, maxLevel, iCell))
+               benthos_input%oceanBottomAlkalinity(column) = max(0.0_RKIND,ecosysTracers(ecosysBenthosIndices%alk_ind, maxLevel, iCell))
+               benthos_input%oceanPOCFlux(column) = max(0.0_RKIND,benthos_pocToSed(maxLevel,iCell))
+               benthos_input%oceanParticulateIronFlux(column) = max(0.0_RKIND,benthos_pfeToSed(maxLevel,iCell))
+               benthos_input%oceanCalciteFlux(column) = max(0.0_RKIND,benthos_calcToSed(maxLevel,iCell))
+               !benthos_input%oceanPONFlux(column) = max(0.0_RKIND,benthos_ponToSed(maxLevel,iCell))
+               !benthos_input%oceanPOPFlux(column) = max(0.0_RKIND,benthos_popToSed(maxLevel,iCell))
+            else
+               benthos_input%oceanBottomSilicate(column) = 0.0_RKIND
+               benthos_input%oceanBottomPhosphate(column) = 0.0_RKIND
+               benthos_input%oceanBottomAmmonium(column) = 0.0_RKIND
+               benthos_input%oceanBottomNitrate(column) = 0.0_RKIND
+
+               benthos_input%oceanBottomOxygen(column) = 0.0_RKIND
+               benthos_input%oceanBottomIron(column) = 0.0_RKIND
+               benthos_input%oceanBottomDIC(column) = 0.0_RKIND
+               benthos_input%oceanBottomAlkalinity(column) = 0.0_RKIND
+               benthos_input%oceanPOCFlux(column) = 0.0_RKIND
+               benthos_input%oceanParticulateIronFlux(column) = 0.0_RKIND
+               benthos_input%oceanCalciteFlux(column) = 0.0_RKIND
+               !benthos_input%oceanPONFlux(column) = 0.0_RKIND
+               !benthos_input%oceanPOPFlux(column) = 0.0_RKIND
+            endif !
+         endif  ! benthos_monthly_forcing
          benthos_input%deepStorage(column,benthos_indices%poca_ind) = benthosTracersStorage(benthosIndices%poca_ind,iCell)
          benthos_input%deepStorage(column,benthos_indices%pocb_ind) = benthosTracersStorage(benthosIndices%pocb_ind,iCell)
          benthos_input%deepStorage(column,benthos_indices%pocc_ind) = benthosTracersStorage(benthosIndices%pocc_ind,iCell)
@@ -577,7 +603,7 @@ contains
          end do
          call benthos_SourceSink(benthos_input, benthos_forcing, benthos_indices, &
             benthos_output, benthos_diagnostic_fields, nBenthicVertLevels, &
-            numBenthicColumnsMax,dt,err)
+            numBenthicColumnsMax,dt,config_use_benthos_monthly_forcing,err)
 
          ! Define the tendencies
          benthosTracersStorage(benthosIndices%poca_ind,iCell) = benthos_output%deepStorage(column,benthos_indices%poca_ind)
@@ -1227,7 +1253,9 @@ contains
           config_use_ocean_conc, &
           config_use_deep_source, &
           config_use_constant_diffusivity, &
-          config_use_ecosysTracers
+          config_use_ecosysTracers, &
+          config_use_ocean_bottom_state, &
+          config_use_benthos_monthly_forcing
 
       ! local variables
 
@@ -1575,6 +1603,8 @@ contains
       call mpas_pool_get_config(ocnConfigs, 'config_use_ocean_conc',  config_use_ocean_conc)
       call mpas_pool_get_config(ocnConfigs, 'config_use_deep_source',  config_use_deep_source)
       call mpas_pool_get_config(ocnConfigs, 'config_use_constant_diffusivity',  config_use_constant_diffusivity)
+      call mpas_pool_get_config(ocnConfigs, 'config_use_benthos_monthly_forcing',  config_use_benthos_monthly_forcing)
+      call mpas_pool_get_config(ocnConfigs, 'config_use_ocean_bottom_state',  config_use_ocean_bottom_state)
       
       call mpas_pool_get_subpool(forcingPool, 'benthosAuxiliary', benthosAuxiliaryPool)
       call mpas_pool_get_array(benthosAuxiliaryPool,'benthosVertGridPoints', benthosVertGridPoints)
@@ -1588,7 +1618,8 @@ contains
            config_use_fast_sedimentation, config_use_positive_sedimentation, &
            config_use_bgc_sinking_flux, config_use_step_initial_profiles, &
            config_use_benthic_reactions, config_use_flux_correction, config_use_ocean_conc, &
-           config_use_deep_source, config_use_constant_diffusivity)
+           config_use_deep_source, config_use_constant_diffusivity, config_use_ocean_bottom_state,&
+           config_use_benthos_monthly_forcing)
            
 !NJ-TEST: VERIFIED
 test_flag = .false.
@@ -2001,14 +2032,14 @@ test_flag = .false.
 
 !***********************************************************************
 !
-!  routine get_benthosData
+!  routine get_benthos_data
 !
-!> \brief   retrieve data needed to compute benthos deposition and runoff inputs
-!> \author  Ma<thew Maltrud
-!> \date    03/07/16
+!> \brief   retrieve data needed to compute benthos ocean climatology
+!> \author  Nicole Jeffery
+!> \date    04/20/21
 !> \details
 !>  This routine calls mpas_forcing routines to acquire needed benthos forcing data and interpolates
-!>    between time levels.  directly copied from ocn_get_shortWaveData.
+!>  between time levels.  directly copied from ocn_get_ecosysData
 !
 !-----------------------------------------------------------------------
 
@@ -2030,15 +2061,69 @@ test_flag = .false.
         type (mpas_pool_type), pointer :: forcingPool
         type (mpas_pool_type), pointer :: meshPool
         type (mpas_pool_type), pointer :: benthosAuxiliary
+        type (mpas_pool_type), pointer :: oceanBenthosPrecipitation, &
+           oceanBottomBenthosFields, oceanBenthosFlux
         type (mpas_pool_type), pointer :: benthosMonthlyForcing
 
+! input flux components in oceanBenthosPrecipitation
         real (kind=RKIND), dimension(:), pointer :: &
-         riverFluxNO3
+           oceanBenthosPrecipMno2a, &
+           oceanBenthosPrecipMno2b, &
+           oceanBenthosPrecipFeoh3a, &
+           oceanBenthosPrecipFeoh3b, &
+           oceanBenthosPrecipFepa, &
+           oceanBenthosPrecipFepb
 
-! input flux components in benthosMonthlyForcing
+! input flux components in oceanBenthosFlux
         real (kind=RKIND), dimension(:), pointer :: &
-         riverFluzNO3
+           oceanBenthosPOCFlux, &
+           oceanBenthosPICFlux, &
+           oceanBenthosMno2Flux, &
+           oceanBenthosFeoh3Flux
 
+        ! input flux components in    oceanBottomBenthosFields
+        real (kind=RKIND), dimension(:), pointer :: &
+           oceanBottomBenthosSio3, &
+           oceanBottomBenthosNo3, &
+           oceanBottomBenthosNh4, &
+           oceanBottomBenthosO2, &
+           oceanBottomBenthosDIC, &
+           oceanBottomBenthosAlk, &
+           oceanBottomBenthosPo4, &
+           oceanBottomBenthosFe, &
+           oceanBottomBenthosCo2, &
+           oceanBottomBenthosHco3, &
+           oceanBottomBenthosCo3, &
+           oceanBottomBenthosSo4, &
+           oceanBottomBenthosMn, &
+           oceanBottomBenthosTemperature, &
+           oceanBottomBenthosSalinity, &
+           oceanBottomBenthosPressure, &
+           oceanBottomBenthosDensity
+        
+        ! input flux components in oceanBottomBenthosFields
+        real (kind=RKIND), dimension(:), pointer :: &
+           oceanBenthosPOCFluxData, &
+           oceanBenthosPICFluxData, &
+           oceanBenthosMno2FluxData, &
+           oceanBenthosFeoh3FluxData, &
+           oceanBenthosPrecipMno2Data, &
+           oceanBenthosPrecipFeoh3Data, &
+           oceanBottomBenthosSio3Data, &
+           oceanBottomBenthosPo4Data, &
+           oceanBottomBenthosNh4Data, &
+           oceanBottomBenthosNo3Data, &
+           oceanBottomBenthosO2Data, &
+           oceanBottomBenthosFeData, &
+           oceanBottomBenthosMnData, &
+           oceanBottomBenthosSo4Data, &
+           oceanBottomBenthosDICData, &
+           oceanBottomBenthosAlkData, &
+           oceanBottomBenthosTemperatureData, &
+           oceanBottomBenthosSalinityData, &
+           oceanBottomBenthosPressureData, &
+           oceanBottomBenthosDensityData
+           
         integer, pointer :: nCells
         integer :: iCell
 
@@ -2050,28 +2135,108 @@ test_flag = .false.
         call mpas_set_timeInterval(timeStepEco,timeString=config_dt)
         call mpas_get_timeInterval(timeStepEco,dt=dt)
 
-!maltrud debug
         if (firstTimeStep .and. config_do_restart) then
-!          call MPAS_forcing_get_forcing(forcingGroupHead, &
-!             'benthosMonthlyClimatology', streamManager, 0.0_RKIND)
+        ! still need to create this file
+          call MPAS_forcing_get_forcing(forcingGroupHead, &
+             'benthosMonthlyClimatology', streamManager, 0.0_RKIND)
         else
-!          call MPAS_forcing_get_forcing(forcingGroupHead, &
-!             'benthosMonthlyClimatology', streamManager, dt)
+          call MPAS_forcing_get_forcing(forcingGroupHead, &
+             'benthosMonthlyClimatology', streamManager, dt)
         end if
 
         call mpas_pool_get_subpool(domain % blocklist % structs, 'mesh', meshPool)
         call mpas_pool_get_subpool(domain % blocklist % structs, 'forcing', forcingPool)
-        call mpas_pool_get_subpool(forcingPool, 'benthosAuxiliary', benthosAuxiliary)
+        call mpas_pool_get_subpool(forcingPool, 'oceanBenthosFlux', oceanBenthosFlux)
+        call mpas_pool_get_subpool(forcingPool, 'oceanBenthosPrecipitation', oceanBenthosPrecipitation)
+        call mpas_pool_get_subpool(forcingPool, 'oceanBottomBenthosFields', oceanBottomBenthosFields)
         call mpas_pool_get_subpool(domain % blocklist % structs, 'benthosMonthlyForcing', benthosMonthlyForcing)
 
         call mpas_pool_get_dimension(meshPool, 'nCells', nCells)
 
-        call mpas_pool_get_array(benthosAuxiliary, 'riverFluxNO3', riverFluxNO3)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPOCFluxData', oceanBenthosPOCFluxData)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPICFluxData', oceanBenthosPICFluxData)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosMno2FluxData', oceanBenthosMno2FluxData)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosFeoh3FluxData', oceanBenthosFeoh3FluxData)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPrecipMno2Data', oceanBenthosPrecipMno2Data)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPrecipFeoh3Data', oceanBenthosPrecipFeoh3Data)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosSio3Data', oceanBottomBenthosSio3Data)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosPo4Data', oceanBottomBenthosPo4Data)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosNh4Data', oceanBottomBenthosNh4Data)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosNo3Data', oceanBottomBenthosNo3Data)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosO2Data', oceanBottomBenthosO2Data)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosFeData', oceanBottomBenthosFeData)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosMnData', oceanBottomBenthosMnData)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosSo4Data', oceanBottomBenthosSo4Data)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosDICData', oceanBottomBenthosDICData)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosAlkData', oceanBottomBenthosAlkData)
+        
+        call mpas_pool_get_array(oceanBenthosFlux, 'oceanBenthosPOCFlux', oceanBenthosPOCFlux )
 
-        call mpas_pool_get_array(benthosMonthlyForcing, 'riverFluzNO3', riverFluzNO3)
+        call mpas_pool_get_array(oceanBenthosFlux, 'oceanBenthosPICFlux', oceanBenthosPICFlux)
+        call mpas_pool_get_array(oceanBenthosFlux, 'oceanBenthosMno2Flux', oceanBenthosMno2Flux)
+        call mpas_pool_get_array(oceanBenthosFlux, 'oceanBenthosFeoh3Flux', oceanBenthosFeoh3Flux)
+
+        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipMno2a', oceanBenthosPrecipMno2a)
+        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipMno2b', oceanBenthosPrecipMno2b)
+        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipFeoh3a', oceanBenthosPrecipFeoh3a)
+        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipFeoh3b', oceanBenthosPrecipFeoh3b)
+        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipFepa', oceanBenthosPrecipFepa)
+        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipFepb', oceanBenthosPrecipFepb)
+
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosSio3', oceanBottomBenthosSio3)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosNo3', oceanBottomBenthosNo3)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosNh4', oceanBottomBenthosNh4)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosO2', oceanBottomBenthosO2)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosDIC', oceanBottomBenthosDIC)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosAlk', oceanBottomBenthosAlk)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosPo4', oceanBottomBenthosPo4)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosFe', oceanBottomBenthosFe)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosCo2', oceanBottomBenthosCo2)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosCo3', oceanBottomBenthosCo3)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosHco3', oceanBottomBenthosHco3)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosSo4', oceanBottomBenthosSo4)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosMn', oceanBottomBenthosMn)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosTemperature', oceanBottomBenthosTemperature)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosSalinity', oceanBottomBenthosSalinity)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosPressure', oceanBottomBenthosPressure)
+        call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosDensity', oceanBottomBenthosDensity)
 
         do iCell = 1, nCells
-           riverFluxNO3(iCell)      = riverFluzNO3(iCell)
+           oceanBenthosPOCFlux(iCell_ = oceanBenthosPOCFluxData(iCell)
+
+           oceanBenthosPICFlux(iCell) = oceanBenthosPICFluxData(iCell)
+           oceanBenthosMno2Flux(iCell) =  3.6e-13_RKIND ! Arkona Basin
+           oceanBenthosFeoh3Flux(iCell) = oceanBenthosFeoh3FluxData(iCell)
+
+           ! Tune the precip values
+           !oceanBenthosPrecipMno2a(iCell) = 0.0_RKIND !oceanBenthosPrecipMno2Data(iCell)
+           !oceanBenthosPrecipMno2b(iCell) = 0.0_RKIND
+           !oceanBenthosPrecipFeoh3a(iCell) = 0.0_RKIND !oceanBenthosPrecipFeoh3Data(iCell)
+           !oceanBenthosPrecipFeoh3b(iCell) = 0.0_RKIND
+           !oceanBenthosPrecipFepa(iCell) = 0.0_RKIND !oceanBenthosPrecipFeoh3Data(iCell) * ironBoundPFraction
+           !oceanBenthosPrecipFepb(iCell) = 0.0_RKIND
+
+           oceanBottomBenthosDensity(iCell) = oceanBottomBenthosDensityData(iCell)
+           oceanBottomBenthosTemperature(iCell) = oceanBottomBenthosTemperatureData(iCell)
+           oceanBottomBenthosSalinity(iCell) = oceanBottomBenthosSalinityData(iCell)
+           oceanBottomBenthosPressure(iCell) = oceanBottomBenthosPressureData(iCell)
+           oceanBottomBenthosMn(iCell) = 4.0E-3_RKIND !Middag 2011 (3-5 nM Barents and Laptev)
+           !Colombo 2020 (CAA 3-9 nM; Chukchi Shelf 3-15 nM)
+           !(Klunder et al., 2012a; Kondo et al., 2016; Vieira et al., 2019).
+           oceanBottomBenthosSio3(iCell) = oceanBottomBenthosSio3Data(iCell)
+           oceanBottomBenthosNo3(iCell) = oceanBottomBenthosNo3Data(iCell)
+           oceanBottomBenthosNh4(iCell) = oceanBottomBenthosNh4Data(iCell)
+           oceanBottomBenthosO2(iCell) = oceanBottomBenthosO2Data(iCell)
+           oceanBottomBenthosDIC(iCell) = oceanBottomBenthosDICData(iCell)
+           oceanBottomBenthosAlk(iCell) = oceanBottomBenthosAlkData(iCell)
+           oceanBottomBenthosPo4(iCell) = oceanBottomBenthosPo4Data(iCell)
+           oceanBottomBenthosFe(iCell) = oceanBottomBenthosFeData(iCell)
+           oceanBottomBenthosSo4(iCell) = 28000.0_RKIND !oceanBottomBenthosSo4Data(iCell)
+
+           ! Don't need these
+           !oceanBottomBenthosCo3(iCell) = oceanBottomBenthosDICData(iCell)*ratioCo3
+           !oceanBottomBenthosHco3(iCell) = oceanBottomBenthosDICData(iCell)*ratioHco3
+           !oceanBottomBenthosCo2(iCell) = oceanBottomBenthosDICData(iCell)*(1-ratioCo3-ratioHco3)
         end do
 
     end subroutine ocn_get_benthos_data!}}}
