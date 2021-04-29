@@ -1813,6 +1813,7 @@ test_flag = .false.
       allocate ( benthos_output%oceanBottomBicarbonate(numBenthicColumnsMax))
       allocate ( benthos_output%oceanBottomCarbonate(numBenthicColumnsMax))
       allocate ( benthos_output%oceanBottomSulfate(numBenthicColumnsMax))
+      allocate ( benthos_output%oceanBottomManganese(numBenthicColumnsMax))
       allocate ( benthos_output%oceanPOCaFlux(numBenthicColumnsMax))
       allocate ( benthos_output%oceanPOPaFlux(numBenthicColumnsMax))
       allocate ( benthos_output%oceanPONaFlux(numBenthicColumnsMax))
@@ -1879,15 +1880,16 @@ test_flag = .false.
       allocate (benthos_diagnostic_fields%diag_netElementsTransportTend(numBenthicColumnsMax, element_tracer_cnt) )
       allocate (benthos_diagnostic_fields%diag_netElementsTend(numBenthicColumnsMax, element_tracer_cnt) )
 
-! initialize monthly forcing to be read from file (sediment fluxes)
-
-      forcingIntervalMonthly = "0000-01-00_00:00:00"
-      forcingReferenceTimeMonthly = "0000-01-15_00:00:00"
-
       call MPAS_pool_get_config(domain % configs, 'config_do_restart', config_do_restart)
       call MPAS_pool_get_config(domain % configs, 'config_do_restart_benthos', config_do_restart_benthos)
 
-      call MPAS_forcing_init_group( forcingGroupHead,  &
+      if (config_use_benthos_monthly_forcing) then
+         ! initialize monthly forcing to be read from file (sediment fluxes)
+
+         forcingIntervalMonthly = "0000-01-00_00:00:00"
+         forcingReferenceTimeMonthly = "0000-01-15_00:00:00"
+
+         call MPAS_forcing_init_group( forcingGroupHead,  &
                 "benthosMonthlyClimatology", &
                 domain, &
                 '0000-01-01_00:00:00', &
@@ -1895,29 +1897,29 @@ test_flag = .false.
                 '0001-00-00_00:00:00', &
                 config_do_restart)
 
-      call mpas_pool_get_subpool(domain % blocklist % structs, 'benthosMonthlyForcing', benthosMonthlyForcing)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPOCFluxData', oceanBenthosPOCFluxData)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPICFluxData', oceanBenthosPICFluxData)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosMno2FluxData', oceanBenthosMno2FluxData)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosFeoh3FluxData', oceanBenthosFeoh3FluxData)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPrecipMno2Data', oceanBenthosPrecipMno2Data)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPrecipFeoh3Data', oceanBenthosPrecipFeoh3Data)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosSio3Data', oceanBottomBenthosSio3Data)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosPo4Data', oceanBottomBenthosPo4Data)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosNh4Data', oceanBottomBenthosNh4Data)              
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosNo3Data', oceanBottomBenthosNo3Data)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosO2Data', oceanBottomBenthosO2Data)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosFeData', oceanBottomBenthosFeData)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosMnData', oceanBottomBenthosMnData)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosSo4Data', oceanBottomBenthosSo4Data)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosDICData', oceanBottomBenthosDICData)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosAlkData', oceanBottomBenthosAlkData)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosTemperatureData', oceanBottomBenthosTemperatureData)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosSalinityData', oceanBottomBenthosSalinityData)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosDensityData', oceanBottomBenthosDensityData)
-      call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosPressureData', oceanBottomBenthosPressureData)
+         call mpas_pool_get_subpool(domain % blocklist % structs, 'benthosMonthlyForcing', benthosMonthlyForcing)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPOCFluxData', oceanBenthosPOCFluxData)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPICFluxData', oceanBenthosPICFluxData)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosMno2FluxData', oceanBenthosMno2FluxData)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosFeoh3FluxData', oceanBenthosFeoh3FluxData)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPrecipMno2Data', oceanBenthosPrecipMno2Data)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPrecipFeoh3Data', oceanBenthosPrecipFeoh3Data)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosSio3Data', oceanBottomBenthosSio3Data)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosPo4Data', oceanBottomBenthosPo4Data)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosNh4Data', oceanBottomBenthosNh4Data)              
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosNo3Data', oceanBottomBenthosNo3Data)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosO2Data', oceanBottomBenthosO2Data)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosFeData', oceanBottomBenthosFeData)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosMnData', oceanBottomBenthosMnData)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosSo4Data', oceanBottomBenthosSo4Data)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosDICData', oceanBottomBenthosDICData)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosAlkData', oceanBottomBenthosAlkData)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosTemperatureData', oceanBottomBenthosTemperatureData)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosSalinityData', oceanBottomBenthosSalinityData)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosDensityData', oceanBottomBenthosDensityData)
+         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosPressureData', oceanBottomBenthosPressureData)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBenthosPOCFluxData', &
@@ -1928,7 +1930,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBenthosPICFluxData', &
@@ -1939,7 +1941,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBenthosMno2FluxData', &
@@ -1950,7 +1952,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBenthosFeoh3FluxData', &
@@ -1961,7 +1963,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBenthosPrecipMno2Data', &
@@ -1972,7 +1974,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBenthosPrecipFeoh3Data', &
@@ -1983,7 +1985,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBottomBenthosSio3Data', &
@@ -1994,7 +1996,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBottomBenthosPo4Data', &
@@ -2005,7 +2007,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBottomBenthosNh4Data', &
@@ -2016,7 +2018,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBottomBenthosNo3Data', &
@@ -2027,7 +2029,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBottomBenthosO2Data', &
@@ -2038,7 +2040,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBottomBenthosFeData', &
@@ -2049,7 +2051,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBottomBenthosMnData', &
@@ -2060,7 +2062,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBottomBenthosSo4Data', &
@@ -2071,7 +2073,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBottomBenthosDICData', &
@@ -2082,7 +2084,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBottomBenthosAlkData', &
@@ -2093,7 +2095,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBottomBenthosTemperatureData', &
@@ -2104,7 +2106,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBottomBenthosSalinityData', &
@@ -2115,7 +2117,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBottomBenthosDensityData', &
@@ -2126,7 +2128,7 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field( domain % streamManager, &
+         call MPAS_forcing_init_field( domain % streamManager, &
                 forcingGroupHead, &
                 'benthosMonthlyClimatology', &
                 'oceanBottomBenthosPressureData', &
@@ -2137,11 +2139,13 @@ test_flag = .false.
                 forcingReferenceTimeMonthly,  &
                 forcingIntervalMonthly)
 
-      call MPAS_forcing_init_field_data( forcingGroupHead, &
+         call MPAS_forcing_init_field_data( forcingGroupHead, &
         'benthosMonthlyClimatology',  &
          domain % streamManager,  &
          config_do_restart, &
          .false.)
+
+     end if ! config_use_benthos_monthly_forcing
 
    ! TracerType: 1 for solutes, 0 for solids
 
@@ -2200,10 +2204,10 @@ test_flag = .false.
                
             do iVertLevels = 1, nBenthicVertLevels+1
                benthosPhPrev3d(iVertLevels,iCell) = 8.0_RKIND
-               benthosTracers(benthosIndices%poca_ind,iVertLevels,iCell) = 0.158_RKIND ! *0.49 !  mmol/kg
-               benthosTracers(benthosIndices%pocb_ind,iVertLevels,iCell) = 1227.2_RKIND !*0.15_RKIND !  mmol/kg
-               benthosTracers(benthosIndices%pocc_ind,iVertLevels,iCell) = 3060.1_RKIND !*0.36_RKIND !  mmol/kg
-               benthosTracers(benthosIndices%popa_ind,iVertLevels,iCell) = 4.02e-6_RKIND !Bottom layer sediment spinup concentration *CtoP !
+               benthosTracers(benthosIndices%poca_ind,iVertLevels,iCell) = 0.158_RKIND
+               benthosTracers(benthosIndices%pocb_ind,iVertLevels,iCell) = 1227.2_RKIND
+               benthosTracers(benthosIndices%pocc_ind,iVertLevels,iCell) = 3060.1_RKIND
+               benthosTracers(benthosIndices%popa_ind,iVertLevels,iCell) = 4.02e-6_RKIND
                benthosTracers(benthosIndices%popb_ind,iVertLevels,iCell) = 4.16_RKIND !*0.15_RKIND*CtoP !
                benthosTracers(benthosIndices%popc_ind,iVertLevels,iCell) = 10.6_RKIND !*0.36_RKIND*CtoP !
                benthosTracers(benthosIndices%pona_ind,iVertLevels,iCell) = 0.024_RKIND !*CtoP/NtoP !
