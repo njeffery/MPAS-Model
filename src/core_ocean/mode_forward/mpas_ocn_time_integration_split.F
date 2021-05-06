@@ -141,6 +141,7 @@ module ocn_time_integration_split
          forcingPool,       &! structure holding forcing variables
          scratchPool,       &! structure holding temporary variables
          swForcingPool,     &! structure holding short-wave forcing vars
+         diagnosticsPool,   &! structure holding tracer diagnostics
          seafloorTendPool,  &! structure holding benthos tendencies
          seafloorTracersPool    ! structure holding benthos tracers
 
@@ -165,8 +166,7 @@ module ocn_time_integration_split
          BtrCorIter,      &! loop index for barotropic coriolis cycle
          stage1_tend_time,&! time index for stage 1 tendencies
          edgeHaloComputeCounter, &! halo counters to reduce
-         cellHaloComputeCounter, & ! halo updates during cycling
-         nBenthicVertLevels! number of benthic vertical levels 
+         cellHaloComputeCounter   ! halo updates during cycling
 
       real (kind=RKIND) :: &
          normalThicknessFluxSum, &! sum of thickness flux in column
@@ -225,7 +225,8 @@ module ocn_time_integration_split
 
       integer, pointer :: &
          startIndex, endIndex, &! start, end index for tracer groups
-         indexSalinity          ! tracer index for salinity
+         indexSalinity,        &! tracer index for salinity
+         nBenthicVertLevels     ! number of benthic vertical levels 
 
       type (mpas_pool_iterator_type) :: &
          groupItr               ! iterator for tracer groups
@@ -299,6 +300,8 @@ module ocn_time_integration_split
                                                  forcingPool)
       call mpas_pool_get_subpool(block%structs, 'shortwave', &
                                                  swForcingPool)
+      call mpas_pool_get_subpool(block%structs, 'diagnostics', &
+                                                 diagnosticsPool)
       call mpas_pool_get_subpool(block%structs, 'tend', &
                                                  tendPool)
       call mpas_pool_get_subpool(block%structs, 'scratch', &
@@ -1523,8 +1526,8 @@ module ocn_time_integration_split
          call mpas_timer_start('se tracer tend', .false.)
 
          call ocn_tend_tracer(tendPool, statePool, forcingPool, &
-                              meshPool, verticalMeshPool, swForcingPool, &
-                              dt, activeTracersOnly, 2)
+                              meshPool, swForcingPool, &
+                              diagnosticsPool, dt, activeTracersOnly, 2)
 
          call mpas_timer_stop('se tracer tend')
 
@@ -1544,9 +1547,8 @@ module ocn_time_integration_split
                end if
             end if
          end do
-         if (config_use_benthosTracers) then
+         if (config_use_benthosTracers .and. .not. activeTracersOnly) then
             call mpas_pool_get_subpool(tendPool, 'seafloorTend', seafloorTendPool)
-!            call mpas_pool_get_array(seafloorTendPool, 'benthosTracersTend', benthosTracersTend)
             call mpas_dmpar_field_halo_exch(domain, 'benthosTracersTend')
          end if
          
@@ -1772,7 +1774,7 @@ module ocn_time_integration_split
                         !$omp end do
                         !$omp end parallel
                      end if
-
+ 
                      ! Reset debugTracers to fixed value at the surface
                      if (trim(groupItr % memberName) == &
                          'debugTracers' .and. &
@@ -1837,15 +1839,17 @@ module ocn_time_integration_split
                call mpas_pool_get_array(seafloorTracersPool, 'benthosTracers', benthosTracersNew, 2)
                call mpas_pool_get_array(seafloorTendPool, 'benthosTracersTend', benthosTracersTend)
                call mpas_pool_get_array(seafloorTendPool, 'benthosInterfaceLayerThickness', benthosInterfaceLayerThickness)
-          
+
                if (associated(benthosTracersNew) .and. associated(benthosTracersCur) .and. associated(benthosTracersTend)) then
                   !$omp parallel
                   !$omp do schedule(runtime) private(k)
                   do iCell = 1, nCellsAll
                      do k = 1, nBenthicVertLevels+1
-                        benthosTracersNew(:,k,iCell) = (benthosTracersCur(:,k,iCell) * benthosInterfaceLayerThickness(k) + dt &
-                           * benthosTracersTend(:,k,iCell) ) / benthosInterfaceLayerThickness(k)
- 
+                        benthosTracersNew(:,k,iCell) = &
+                        (benthosTracersCur(:,k,iCell) * &
+                        benthosInterfaceLayerThickness(k) + dt* &
+                        benthosTracersTend(:,k,iCell) )/ &
+                        benthosInterfaceLayerThickness(k)
                      end do
                    end do
                    !$omp end do

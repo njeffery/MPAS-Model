@@ -467,6 +467,7 @@ contains
             benthos_input%oceanBottomIron(column) = oceanBottomBenthosFe(iCell)
             benthos_input%oceanBottomDIC(column) = oceanBottomBenthosDIC(iCell)
             benthos_input%oceanBottomAlkalinity(column) = oceanBottomBenthosAlk(iCell)
+            benthos_input%oceanBottomManganese(column) = oceanBottomBenthosMn(iCell)
 
             benthos_input%oceanPOCFlux(column) = oceanBenthosPOCFlux(iCell)
             benthos_input%oceanParticulateIronFlux(column) = oceanBenthosFeoh3Flux(iCell)
@@ -478,6 +479,7 @@ contains
             benthos_input%oceanBottomPressure(column) =  pressure(maxLevel,iCell)
             benthos_input%oceanBottomTemperature(column) = activeTracers(indexTemperature, maxLevel, iCell)
             benthos_input%oceanBottomSalinity(column) = activeTracers(indexSalinity, maxLevel, iCell)
+            benthos_input%oceanBottomManganese(column) = 4.0e-3_RKIND !Middag 2011 (3-5 nM Barents and Laptev)
             !
             ! will only be used if use_ocean_bottom_state = true, set in benthos_mod.F90        
             !
@@ -553,12 +555,25 @@ contains
          if (minval(benthosTracers(:,:,iCell)) .lt. -1.0E-11_RKIND) then
                call mpas_log_write('benthosTracers < 0 before SourceSink',MPAS_LOG_ERR)  
                call mpas_log_write('iCell: $i',MPAS_LOG_ERR,intArgs=(/iCell/))
-               call mpas_log_write('oceanBottomBenthosPo4(iCell): $r',MPAS_LOG_ERR,realArgs=(/oceanBottomBenthosPo4(iCell)/))
+               call mpas_log_write('benthos_input%oceanBottomDensity(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanBottomDensity(column)/))
+               call mpas_log_write('benthos_input%oceanBottomTemperature(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanBottomTemperature(column)/))
+               call mpas_log_write('benthos_input%oceanBottomSalinity(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanBottomSalinity(column)/))
+               call mpas_log_write('benthos_input%oceanBottomPressure(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanBottomPressure(column)/))
+               call mpas_log_write('benthos_input%oceanBottomSilicate(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanBottomSilicate(column)/))
+               call mpas_log_write('benthos_input%oceanBottomPhosphate(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanBottomPhosphate(column)/))
+               call mpas_log_write('benthos_input%oceanBottomAmmonium(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanBottomAmmonium(column)/))
+               call mpas_log_write('benthos_input%oceanBottomNitrate(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanBottomNitrate(column)/))
+               call mpas_log_write('benthos_input%oceanBottomOxygen(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanBottomOxygen(column)/))
+               call mpas_log_write('benthos_input%oceanBottomIron(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanBottomIron(column)/))
+               call mpas_log_write('benthos_input%oceanBottomDIC(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanBottomDIC(column)/))
+               call mpas_log_write('benthos_input%oceanBottomAlkalinity(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanBottomAlkalinity(column)/))
+               call mpas_log_write('benthos_input%oceanBottomManganese(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanBottomManganese(column)/))
+               call mpas_log_write('benthos_input%oceanPOCFlux(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanPOCFlux(column)/))
+               call mpas_log_write('benthos_input%oceanParticulateIronFlux(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanParticulateIronFlux(column)/))
+               call mpas_log_write('benthos_input%oceanCalciteFlux(column): $r',MPAS_LOG_ERR,realArgs=(/benthos_input%oceanCalciteFlux(column)/))
                do iTracer=1,nBenthicTracers
                   if (minval(benthosTracers(iTracer,:,iCell)) .lt. 0.0_RKIND) then
                      call mpas_log_write('iTracer: $i',MPAS_LOG_ERR,intArgs=(/iTracer/))
-                     call mpas_log_write('benthosIndices%h2po4_ind: $i',MPAS_LOG_ERR,intArgs=(/benthosIndices%h2po4_ind/))
-                     call mpas_log_write('benthosIndices%ch4_ind: $i',MPAS_LOG_ERR,intArgs=(/benthosIndices%ch4_ind/))
                      do iLevel=1,nBenthicVertLevels+1
                         call mpas_log_write('iLevel: $i',MPAS_LOG_ERR,intArgs=(/iLevel/))
                         call mpas_log_write('benthosTracers(iTracers,iLevel,iCell)): $r',MPAS_LOG_ERR,realArgs=(/benthosTracers(iTracer,iLevel,iCell)/))
@@ -730,15 +745,19 @@ contains
            benthosTracersTend(benthosIndices%nh4_ind,iLevel,iCell) =  &
            benthosTracersTend(benthosIndices%nh4_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%nh4_ind)*benthosInterfaceLayerThickness(iLevel)
+       
            benthosTracersTend(benthosIndices%h2po4_ind,iLevel,iCell) =  &
            benthosTracersTend(benthosIndices%h2po4_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%h2po4_ind)*benthosInterfaceLayerThickness(iLevel)
+
            benthosTracersTend(benthosIndices%co2_ind,iLevel,iCell) =  &
            benthosTracersTend(benthosIndices%co2_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%co2_ind)*benthosInterfaceLayerThickness(iLevel)
+ 
            benthosTracersTend(benthosIndices%no3_ind,iLevel,iCell) =  &
            benthosTracersTend(benthosIndices%no3_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%no3_ind)*benthosInterfaceLayerThickness(iLevel)
+
            benthosTracersTend(benthosIndices%mno2a_ind,iLevel,iCell) =  &
            benthosTracersTend(benthosIndices%mno2a_ind,iLevel,iCell)   &
                + benthos_output%benthosTendencies(iLevel,column,benthos_indices%mno2a_ind)*benthosInterfaceLayerThickness(iLevel)
@@ -1221,11 +1240,6 @@ contains
           benthosVertGridPoints, &
           bottomDepth, &
           latCell
-
-      ! input flux components in benthosMonthlyForcing
-      real (kind=RKIND), dimension(:), pointer :: &
-          riverFluzSed,    &
-          riverFluzPOC
 
       integer, dimension(:), pointer :: &
           indexToBenthosCells
@@ -2196,12 +2210,13 @@ test_flag = .false.
       benthosTracers(:,:,:) = 0.0_RKIND
 
       if (.not. config_do_restart_benthos) then
+         if (config_use_benthos_monthly_forcing) then
+
          do iCellBenthic = 1, nBenthicCells !CellsSolve
             iCell = indexToBenthosCells(iCellBenthic)
             do iBenthicTracers = 1, nBenthicTracers
                benthosTracersStorage(iBenthicTracers,iCell) = 0.0_RKIND
             end do
-               
             do iVertLevels = 1, nBenthicVertLevels+1
                benthosPhPrev3d(iVertLevels,iCell) = 8.0_RKIND
                benthosTracers(benthosIndices%poca_ind,iVertLevels,iCell) = 0.158_RKIND
@@ -2213,32 +2228,32 @@ test_flag = .false.
                benthosTracers(benthosIndices%pona_ind,iVertLevels,iCell) = 0.024_RKIND !*CtoP/NtoP !
                benthosTracers(benthosIndices%ponb_ind,iVertLevels,iCell) = 118.4_RKIND !*0.15_RKIND*CtoP/NtoP !
                benthosTracers(benthosIndices%ponc_ind,iVertLevels,iCell) = 306.1_RKIND !*0.36_RKIND*CtoP/NtoP !
-               benthosTracers(benthosIndices%o2_ind,iVertLevels,iCell) = 0.0_RKIND   !
-               benthosTracers(benthosIndices%nh4_ind,iVertLevels,iCell) = 84.3_RKIND  !
-               benthosTracers(benthosIndices%h2po4_ind,iVertLevels,iCell) = 36.4_RKIND ! 90.0_RKIND !   umol/L  Reed
+               benthosTracers(benthosIndices%o2_ind,iVertLevels,iCell) = oceanBottomBenthosO2Data(iCell) !0.0_RKIND   !
+               benthosTracers(benthosIndices%nh4_ind,iVertLevels,iCell) = oceanBottomBenthosNh4Data(iCell) !84.3_RKIND  !**
+               benthosTracers(benthosIndices%h2po4_ind,iVertLevels,iCell) = oceanBottomBenthosPo4Data(iCell) !36.4_RKIND !** 90.0_RKIND !   umol/L  Reed
                benthosTracers(benthosIndices%co2_ind,iVertLevels,iCell) = 26.5_RKIND  !   mM Krumins
-               benthosTracers(benthosIndices%no3_ind,iVertLevels,iCell) = 0.0_RKIND  !   mM Krumins
+               benthosTracers(benthosIndices%no3_ind,iVertLevels,iCell) = oceanBottomBenthosNo3Data(iCell) !0.0_RKIND  !   mM Krumins
                benthosTracers(benthosIndices%mno2a_ind,iVertLevels,iCell) = 0.0_RKIND!        mmol/kg  Reed et al
                benthosTracers(benthosIndices%mno2b_ind,iVertLevels,iCell) = 0.0_RKIND 
-               benthosTracers(benthosIndices%mn_ind,iVertLevels,iCell) = 59.0_RKIND !  umol/L Reed
+               benthosTracers(benthosIndices%mn_ind,iVertLevels,iCell) = 0.0_RKind! 59.0_RKIND !**  umol/L Reed
                benthosTracers(benthosIndices%feoh3a_ind,iVertLevels,iCell) = 0.0_RKIND !    mmol/kg
                benthosTracers(benthosIndices%feoh3b_ind,iVertLevels,iCell) = 0.0_RKIND !    mmol/kg
-               benthosTracers(benthosIndices%fe_ind,iVertLevels,iCell) = 0.85_RKIND !  mmol/kg  Reed
+               benthosTracers(benthosIndices%fe_ind,iVertLevels,iCell) = oceanBottomBenthosFeData(iCell) !0.85_RKIND !**
                benthosTracers(benthosIndices%fepa_ind,iVertLevels,iCell) = 0.0_RKIND !  mmol/kg  Reed
                benthosTracers(benthosIndices%fepb_ind,iVertLevels,iCell) = 0.0_RKIND !  mmol/kg  Reed
-               benthosTracers(benthosIndices%so4_ind,iVertLevels,iCell) = 1080.9_RKIND  !*1000.0_RKIND !  umol/L from mmol/L Reed
-               benthosTracers(benthosIndices%h2s_ind,iVertLevels,iCell) = 300.0_RKIND  !961.3_RKIND !   gets to 600 umol/L at bottom but theres a bottom flux
-               benthosTracers(benthosIndices%ch4_ind,iVertLevels,iCell) = 1.3_RKIND !
+               benthosTracers(benthosIndices%so4_ind,iVertLevels,iCell) = 28000.0_RKIND !1080.9_RKIND  !*1000.0_RKIND !  umol/L from mmol/L Reed
+               benthosTracers(benthosIndices%h2s_ind,iVertLevels,iCell) = 0.0_RKIND !300.0_RKIND !** !961.3_RKIND !   gets to 600 umol/L at bottom but theres a bottom flux
+               benthosTracers(benthosIndices%ch4_ind,iVertLevels,iCell) = 0.0_RKIND !1.3_RKIND ! **
                benthosTracers(benthosIndices%hco3_ind,iVertLevels,iCell) = 2693.2_RKIND !  mM  Krumins et al
                benthosTracers(benthosIndices%fes_ind,iVertLevels,iCell) = 59.7_RKIND !  2000.0 ! 200.0 !  mmol/kg  Reed et al
                benthosTracers(benthosIndices%fes2_ind,iVertLevels,iCell) = 17.8_RKIND !  2000.0 ! 200.0 !  mmol/kg  Reed et al
                benthosTracers(benthosIndices%s_ind,iVertLevels,iCell) = 0.0_RKIND !  2000.0 ! 200.0 !  mmol/kg  Reed et al
                benthosTracers(benthosIndices%co3_ind,iVertLevels,iCell) = 140.4_RKIND !  66.75 ! 65 umol/kg * 1.027 g/m3   Sulpis et al 2018
-               benthosTracers(benthosIndices%dic_ind,iVertLevels,iCell) = 2860.1_RKIND !benthosTracers(benthosIndices%co3_ind,iVertLevels,iCell) + benthosTracers(benthosIndices%co2_ind,iVertLevels,iCell) + benthosTracers(benthosIndices%hco3_ind,iVertLevels,iCell) 
-               benthosTracers(benthosIndices%alk_ind,iVertLevels,iCell) = 3141.2_RKIND !  87 of the ocean conc. (:,:,benthosIndices%mmol/m3) same as ocean conc. Krumins et al
-               benthosTracers(benthosIndices%caco3a_ind,iVertLevels,iCell) = 1000.0_RKIND*.5_RKIND !  ratio of PIC is 63:13:24...  Roughly  POC:PIC = (:,:,benthosIndices%depth)^(:,:,benthosIndices%-0.56)*64.3   so about 4.8:1
-               benthosTracers(benthosIndices%caco3b_ind,iVertLevels,iCell) = 1000.0_RKIND*0.35_RKIND !
-               benthosTracers(benthosIndices%camgco3_ind,iVertLevels,iCell)= 1000.0_RKIND*0.15_RKIND !
+               benthosTracers(benthosIndices%dic_ind,iVertLevels,iCell) = oceanBottomBenthosDICData(iCell) !2860.1_RKIND 
+               benthosTracers(benthosIndices%alk_ind,iVertLevels,iCell) = oceanBottomBenthosAlkData(iCell) !3141.2_RKIND
+               benthosTracers(benthosIndices%caco3a_ind,iVertLevels,iCell) = 1000.0_RKIND*.5_RKIND !**  ratio of PIC is 63:13:24...  Roughly  POC:PIC = (:,:,benthosIndices%depth)^(:,:,benthosIndices%-0.56)*64.3   so about 4.8:1
+               benthosTracers(benthosIndices%caco3b_ind,iVertLevels,iCell) = 1000.0_RKIND*0.35_RKIND !**
+               benthosTracers(benthosIndices%camgco3_ind,iVertLevels,iCell)= 1000.0_RKIND*0.15_RKIND !**
 !               call mpas_log_write('initial benthosTracers(benthosIndices%caco3b_ind,iVertLevels,iCell): $r',MPAS_LOG_ERR,realArgs=(/benthosTracers(benthosIndices%caco3b_ind,iVertLevels,iCell)/))
 
             end do              ! iVertLevels
@@ -2254,6 +2269,65 @@ test_flag = .false.
                end do ! iBenthicTracers
             end if  ! step function
          end do                 ! iCell
+         else ! not benthos_monthly_forcing
+         do iCellBenthic = 1, nBenthicCells !CellsSolve
+            iCell = indexToBenthosCells(iCellBenthic)
+            do iBenthicTracers = 1, nBenthicTracers
+               benthosTracersStorage(iBenthicTracers,iCell) = 0.0_RKIND
+            end do
+            do iVertLevels = 1, nBenthicVertLevels+1
+               benthosPhPrev3d(iVertLevels,iCell) = 8.0_RKIND
+               benthosTracers(benthosIndices%poca_ind,iVertLevels,iCell) = 0.158_RKIND
+               benthosTracers(benthosIndices%pocb_ind,iVertLevels,iCell) = 1227.2_RKIND
+               benthosTracers(benthosIndices%pocc_ind,iVertLevels,iCell) = 3060.1_RKIND
+               benthosTracers(benthosIndices%popa_ind,iVertLevels,iCell) = 4.02e-6_RKIND
+               benthosTracers(benthosIndices%popb_ind,iVertLevels,iCell) = 4.16_RKIND !*0.15_RKIND*CtoP !
+               benthosTracers(benthosIndices%popc_ind,iVertLevels,iCell) = 10.6_RKIND !*0.36_RKIND*CtoP !
+               benthosTracers(benthosIndices%pona_ind,iVertLevels,iCell) = 0.024_RKIND !*CtoP/NtoP !
+               benthosTracers(benthosIndices%ponb_ind,iVertLevels,iCell) = 118.4_RKIND !*0.15_RKIND*CtoP/NtoP !
+               benthosTracers(benthosIndices%ponc_ind,iVertLevels,iCell) = 306.1_RKIND !*0.36_RKIND*CtoP/NtoP !
+               benthosTracers(benthosIndices%o2_ind,iVertLevels,iCell) = 0.0_RKIND   !
+               benthosTracers(benthosIndices%nh4_ind,iVertLevels,iCell) = 84.3_RKIND  !**
+               benthosTracers(benthosIndices%h2po4_ind,iVertLevels,iCell) =36.4_RKIND !** 90.0_RKIND !   umol/L  Reed
+               benthosTracers(benthosIndices%co2_ind,iVertLevels,iCell) = 26.5_RKIND  !   mM Krumins
+               benthosTracers(benthosIndices%no3_ind,iVertLevels,iCell) = 0.0_RKIND  !   mM Krumins
+               benthosTracers(benthosIndices%mno2a_ind,iVertLevels,iCell) = 0.0_RKIND!        mmol/kg  Reed et al
+               benthosTracers(benthosIndices%mno2b_ind,iVertLevels,iCell) = 0.0_RKIND 
+               benthosTracers(benthosIndices%mn_ind,iVertLevels,iCell) = 59.0_RKIND !**  umol/L Reed
+               benthosTracers(benthosIndices%feoh3a_ind,iVertLevels,iCell) = 0.0_RKIND !    mmol/kg
+               benthosTracers(benthosIndices%feoh3b_ind,iVertLevels,iCell) = 0.0_RKIND !    mmol/kg
+               benthosTracers(benthosIndices%fe_ind,iVertLevels,iCell) = 0.85_RKIND !**  mmol/kg  Reed
+               benthosTracers(benthosIndices%fepa_ind,iVertLevels,iCell) = 0.0_RKIND !  mmol/kg  Reed
+               benthosTracers(benthosIndices%fepb_ind,iVertLevels,iCell) = 0.0_RKIND !  mmol/kg  Reed
+               benthosTracers(benthosIndices%so4_ind,iVertLevels,iCell) = 1080.9_RKIND  !*1000.0_RKIND !  umol/L from mmol/L Reed
+               benthosTracers(benthosIndices%h2s_ind,iVertLevels,iCell) = 300.0_RKIND !** !961.3_RKIND !   gets to 600 umol/L at bottom but theres a bottom flux
+               benthosTracers(benthosIndices%ch4_ind,iVertLevels,iCell) = 1.3_RKIND ! **
+               benthosTracers(benthosIndices%hco3_ind,iVertLevels,iCell) = 2693.2_RKIND !  mM  Krumins et al
+               benthosTracers(benthosIndices%fes_ind,iVertLevels,iCell) = 59.7_RKIND !  2000.0 ! 200.0 !  mmol/kg  Reed et al
+               benthosTracers(benthosIndices%fes2_ind,iVertLevels,iCell) = 17.8_RKIND !  2000.0 ! 200.0 !  mmol/kg  Reed et al
+               benthosTracers(benthosIndices%s_ind,iVertLevels,iCell) = 0.0_RKIND !  2000.0 ! 200.0 !  mmol/kg  Reed et al
+               benthosTracers(benthosIndices%co3_ind,iVertLevels,iCell) = 140.4_RKIND !  66.75 ! 65 umol/kg * 1.027 g/m3   Sulpis et al 2018
+               benthosTracers(benthosIndices%dic_ind,iVertLevels,iCell) = 2860.1_RKIND !benthosTracers(benthosIndices%co3_ind,iVertLevels,iCell) + benthosTracers(benthosIndices%co2_ind,iVertLevels,iCell) + benthosTracers(benthosIndices%hco3_ind,iVertLevels,iCell) 
+               benthosTracers(benthosIndices%alk_ind,iVertLevels,iCell) = 3141.2_RKIND !  87 of the ocean conc. (:,:,benthosIndices%mmol/m3) same as ocean conc. Krumins et al
+               benthosTracers(benthosIndices%caco3a_ind,iVertLevels,iCell) = 1000.0_RKIND*.5_RKIND !**  ratio of PIC is 63:13:24...  Roughly  POC:PIC = (:,:,benthosIndices%depth)^(:,:,benthosIndices%-0.56)*64.3   so about 4.8:1
+               benthosTracers(benthosIndices%caco3b_ind,iVertLevels,iCell) = 1000.0_RKIND*0.35_RKIND !**
+               benthosTracers(benthosIndices%camgco3_ind,iVertLevels,iCell)= 1000.0_RKIND*0.15_RKIND !**
+!               call mpas_log_write('initial benthosTracers(benthosIndices%caco3b_ind,iVertLevels,iCell): $r',MPAS_LOG_ERR,realArgs=(/benthosTracers(benthosIndices%caco3b_ind,iVertLevels,iCell)/))
+
+            end do              ! iVertLevels
+            if (config_use_step_initial_profiles) then
+               do iBenthicTracers = 1,nBenthicTracers
+                  do iVertLevels = 1, nBenthicVertLevels+1
+                     if (iVertLevels .le. 15 .or. iVertLevels .ge. 26) then
+                        benthosTracers(iBenthicTracers,iVertLevels,iCell) = benthosTracers(iBenthicTracers,iVertLevels,iCell)*0.1_RKIND
+                     else if (config_set_benthos_flags .eq. 6 .and. iBenthicTracers .eq. benthosIndices%poca_ind) then
+                        benthosTracers(iBenthicTracers,iVertLevels,iCell) = 0.0_RKIND
+                     end if
+                  end do        ! ivertLevels
+               end do ! iBenthicTracers
+            end if  ! step function
+         end do                 ! iCell
+         endif
       end if                    ! .not. config_do_restart_benthos
             
       !NJ-TEST: VERIFIED
@@ -2356,18 +2430,13 @@ test_flag = .false.
         real (kind=RKIND), dimension(:), pointer :: &
            oceanBenthosPOCFluxData, &
            oceanBenthosPICFluxData, &
-           oceanBenthosMno2FluxData, &
            oceanBenthosFeoh3FluxData, &
-           oceanBenthosPrecipMno2Data, &
-           oceanBenthosPrecipFeoh3Data, &
            oceanBottomBenthosSio3Data, &
            oceanBottomBenthosPo4Data, &
            oceanBottomBenthosNh4Data, &
            oceanBottomBenthosNo3Data, &
            oceanBottomBenthosO2Data, &
            oceanBottomBenthosFeData, &
-           oceanBottomBenthosMnData, &
-           oceanBottomBenthosSo4Data, &
            oceanBottomBenthosDICData, &
            oceanBottomBenthosAlkData, &
            oceanBottomBenthosTemperatureData, &
@@ -2378,10 +2447,11 @@ test_flag = .false.
         integer, pointer :: nCells
         integer :: iCell
 
-        logical, pointer :: config_do_restart
+        logical, pointer :: config_do_restart, config_do_restart_benthos
 
         call MPAS_pool_get_config(domain%configs, 'config_dt', config_dt)
         call MPAS_pool_get_config(domain%configs, 'config_do_restart', config_do_restart)
+        call MPAS_pool_get_config(domain%configs, 'config_do_restart_benthos', config_do_restart_benthos)
 
         call mpas_set_timeInterval(timeStepEco,timeString=config_dt)
         call mpas_get_timeInterval(timeStepEco,dt=dt)
@@ -2406,33 +2476,33 @@ test_flag = .false.
 
         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPOCFluxData', oceanBenthosPOCFluxData)
         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPICFluxData', oceanBenthosPICFluxData)
-        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosMno2FluxData', oceanBenthosMno2FluxData)
         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosFeoh3FluxData', oceanBenthosFeoh3FluxData)
-        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPrecipMno2Data', oceanBenthosPrecipMno2Data)
-        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBenthosPrecipFeoh3Data', oceanBenthosPrecipFeoh3Data)
+
         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosSio3Data', oceanBottomBenthosSio3Data)
         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosPo4Data', oceanBottomBenthosPo4Data)
         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosNh4Data', oceanBottomBenthosNh4Data)
         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosNo3Data', oceanBottomBenthosNo3Data)
         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosO2Data', oceanBottomBenthosO2Data)
         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosFeData', oceanBottomBenthosFeData)
-        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosMnData', oceanBottomBenthosMnData)
-        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosSo4Data', oceanBottomBenthosSo4Data)
         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosDICData', oceanBottomBenthosDICData)
         call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosAlkData', oceanBottomBenthosAlkData)
+
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosDensityData', oceanBottomBenthosDensityData)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosTemperatureData', oceanBottomBenthosTemperatureData)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosPressureData', oceanBottomBenthosPressureData)
+        call mpas_pool_get_array(benthosMonthlyForcing, 'oceanBottomBenthosSalinityData', oceanBottomBenthosSalinityData)
         
         call mpas_pool_get_array(oceanBenthosFlux, 'oceanBenthosPOCFlux', oceanBenthosPOCFlux )
-
         call mpas_pool_get_array(oceanBenthosFlux, 'oceanBenthosPICFlux', oceanBenthosPICFlux)
         call mpas_pool_get_array(oceanBenthosFlux, 'oceanBenthosMno2Flux', oceanBenthosMno2Flux)
         call mpas_pool_get_array(oceanBenthosFlux, 'oceanBenthosFeoh3Flux', oceanBenthosFeoh3Flux)
 
-        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipMno2a', oceanBenthosPrecipMno2a)
-        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipMno2b', oceanBenthosPrecipMno2b)
-        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipFeoh3a', oceanBenthosPrecipFeoh3a)
-        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipFeoh3b', oceanBenthosPrecipFeoh3b)
-        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipFepa', oceanBenthosPrecipFepa)
-        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipFepb', oceanBenthosPrecipFepb)
+!        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipMno2a', oceanBenthosPrecipMno2a)
+!        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipMno2b', oceanBenthosPrecipMno2b)
+!        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipFeoh3a', oceanBenthosPrecipFeoh3a)
+!        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipFeoh3b', oceanBenthosPrecipFeoh3b)
+!        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipFepa', oceanBenthosPrecipFepa)
+!        call mpas_pool_get_array(oceanBenthosPrecipitation, 'oceanBenthosPrecipFepb', oceanBenthosPrecipFepb)
 
         call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosSio3', oceanBottomBenthosSio3)
         call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosNo3', oceanBottomBenthosNo3)
@@ -2453,41 +2523,36 @@ test_flag = .false.
         call mpas_pool_get_array(oceanBottomBenthosFields, 'oceanBottomBenthosDensity', oceanBottomBenthosDensity)
 
         do iCell = 1, nCells
-           oceanBenthosPOCFlux(iCell) = oceanBenthosPOCFluxData(iCell)
-           oceanBenthosPICFlux(iCell) = oceanBenthosPICFluxData(iCell)
+           oceanBenthosPOCFlux(iCell) = max(0.0_RKIND,oceanBenthosPOCFluxData(iCell))
+           oceanBenthosPICFlux(iCell) = max(0.0_RKIND,oceanBenthosPICFluxData(iCell))
            oceanBenthosMno2Flux(iCell) =  3.6e-13_RKIND ! Arkona Basin
-           oceanBenthosFeoh3Flux(iCell) = oceanBenthosFeoh3FluxData(iCell)
+           oceanBenthosFeoh3Flux(iCell) = max(0.0_RKIND,oceanBenthosFeoh3FluxData(iCell))
 
-           ! Tune the precip values
-           !oceanBenthosPrecipMno2a(iCell) = 0.0_RKIND !oceanBenthosPrecipMno2Data(iCell)
-           !oceanBenthosPrecipMno2b(iCell) = 0.0_RKIND
-           !oceanBenthosPrecipFeoh3a(iCell) = 0.0_RKIND !oceanBenthosPrecipFeoh3Data(iCell)
-           !oceanBenthosPrecipFeoh3b(iCell) = 0.0_RKIND
-           !oceanBenthosPrecipFepa(iCell) = 0.0_RKIND !oceanBenthosPrecipFeoh3Data(iCell) * ironBoundPFraction
-           !oceanBenthosPrecipFepb(iCell) = 0.0_RKIND
-
-           oceanBottomBenthosDensity(iCell) = oceanBottomBenthosDensityData(iCell)
+           oceanBottomBenthosDensity(iCell) = max(0.0_RKIND,oceanBottomBenthosDensityData(iCell))
            oceanBottomBenthosTemperature(iCell) = oceanBottomBenthosTemperatureData(iCell)
-           oceanBottomBenthosSalinity(iCell) = oceanBottomBenthosSalinityData(iCell)
-           oceanBottomBenthosPressure(iCell) = oceanBottomBenthosPressureData(iCell)
-           oceanBottomBenthosMn(iCell) = 4.0E-3_RKIND !Middag 2011 (3-5 nM Barents and Laptev)
+           oceanBottomBenthosSalinity(iCell) = max(0.0_RKIND,oceanBottomBenthosSalinityData(iCell))
+           oceanBottomBenthosPressure(iCell) = max(0.0_RKIND,oceanBottomBenthosPressureData(iCell))
+           oceanBottomBenthosMn(iCell) = 4.0e-3_RKIND !Middag 2011 (3-5 nM Barents and Laptev)
            !Colombo 2020 (CAA 3-9 nM; Chukchi Shelf 3-15 nM)
-           !(Klunder et al., 2012a; Kondo et al., 2016; Vieira et al., 2019).
-           oceanBottomBenthosSio3(iCell) = oceanBottomBenthosSio3Data(iCell)
-           oceanBottomBenthosNo3(iCell) = oceanBottomBenthosNo3Data(iCell)
-           oceanBottomBenthosNh4(iCell) = oceanBottomBenthosNh4Data(iCell)
-           oceanBottomBenthosO2(iCell) = oceanBottomBenthosO2Data(iCell)
-           oceanBottomBenthosDIC(iCell) = oceanBottomBenthosDICData(iCell)
-           oceanBottomBenthosAlk(iCell) = oceanBottomBenthosAlkData(iCell)
-           oceanBottomBenthosPo4(iCell) = oceanBottomBenthosPo4Data(iCell)
-           oceanBottomBenthosFe(iCell) = oceanBottomBenthosFeData(iCell)
-           oceanBottomBenthosSo4(iCell) = 28000.0_RKIND !oceanBottomBenthosSo4Data(iCell)
+           !(Klunder et al., 2012a; Kondo et al., 2016; Vieira et al., 2019)
 
-           ! Don't need these
-           !oceanBottomBenthosCo3(iCell) = oceanBottomBenthosDICData(iCell)*ratioCo3
-           !oceanBottomBenthosHco3(iCell) = oceanBottomBenthosDICData(iCell)*ratioHco3
-           !oceanBottomBenthosCo2(iCell) = oceanBottomBenthosDICData(iCell)*(1-ratioCo3-ratioHco3)
+           oceanBottomBenthosSio3(iCell) = max(0.0_RKIND,oceanBottomBenthosSio3Data(iCell))
+           oceanBottomBenthosNo3(iCell) = max(0.0_RKIND,oceanBottomBenthosNo3Data(iCell))
+           oceanBottomBenthosNh4(iCell) = max(0.0_RKIND,oceanBottomBenthosNh4Data(iCell))
+           oceanBottomBenthosO2(iCell) = max(0.0_RKIND,oceanBottomBenthosO2Data(iCell))
+           oceanBottomBenthosDIC(iCell) = max(0.0_RKIND,oceanBottomBenthosDICData(iCell))
+           oceanBottomBenthosAlk(iCell) = max(0.0_RKIND,oceanBottomBenthosAlkData(iCell))
+           oceanBottomBenthosPo4(iCell) = max(0.0_RKIND,oceanBottomBenthosPo4Data(iCell))
+           oceanBottomBenthosFe(iCell) = max(0.0_RKIND,oceanBottomBenthosFeData(iCell))
+           oceanBottomBenthosSo4(iCell) = 28000.0_RKIND
+
         end do
+
+        !call mpas_log_write('maxval(oceanBottomBenthosTemperature(:)): $r',MPAS_LOG_ERR,realArgs=(/maxval(oceanBottomBenthosTemperature(:))/))
+        !call mpas_log_write('minval(oceanBottomBenthosTemperature(:)): $r',MPAS_LOG_ERR,realArgs=(/minval(oceanBottomBenthosTemperature(:))/))
+
+        !call mpas_log_write('maxval(oceanBottomBenthosNO3(:)): $r',MPAS_LOG_ERR,realArgs=(/maxval(oceanBottomBenthosNO3(:))/))
+        !call mpas_log_write('minval(oceanBottomBenthosNO3(:)): $r',MPAS_LOG_ERR,realArgs=(/minval(oceanBottomBenthosNO3(:))/))
 
     end subroutine ocn_get_benthos_data!}}}
 
@@ -2496,17 +2561,17 @@ test_flag = .false.
 !  routine ocn_benthos_forcing_write_restart
 !
 !> \brief   writes restart timestamp for benthos data to be read in on future restart
-!> \author  Mathew Maltrud
-!> \date    03/07/2016
-
-!
+!> \author  Nicole Jeffery
+!> \date    04/30/2021
+! 
+!  Copied after Mathew Maltrud, ocn_ecosys_forcing_write_restart
 !-----------------------------------------------------------------------
 
    subroutine ocn_benthos_forcing_write_restart(domain)!{{{
 
       type(domain_type) :: domain
 
-!      call MPAS_forcing_write_restart_times(forcingGroupHead)
+      call MPAS_forcing_write_restart_times(forcingGroupHead)
 
     end subroutine ocn_benthos_forcing_write_restart!}}}
 

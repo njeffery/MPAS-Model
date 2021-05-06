@@ -481,8 +481,8 @@ contains
 !-----------------------------------------------------------------------
 
    subroutine ocn_tend_tracer(tendPool, statePool, forcingPool, &
-                              meshPool, verticalMeshPool, swForcingPool, &
-                              dt, activeTracersOnlyIn, timeLevelIn )!{{{
+                              meshPool, swForcingPool, &
+                              diagnosticsPool, dt, activeTracersOnlyIn, timeLevelIn )!{{{
 
       !-----------------------------------------------------------------
       ! input variables
@@ -490,8 +490,7 @@ contains
 
       type (mpas_pool_type), intent(in) :: &
          statePool,          &!< [in] ocean state variables
-         meshPool,           &!< [in] mesh information
-         verticalMeshPool     !< [in] verticalMesh information
+         meshPool             !< [in] mesh information
 
       real (kind=RKIND), dimension(:), pointer :: bottomDepth
       real (kind=RKIND), dimension(:), pointer :: benthosInterfaceLayerThickness
@@ -519,7 +518,8 @@ contains
       type (mpas_pool_type), intent(inout) :: &
          forcingPool,   &!< [inout] forcing data
          swForcingPool, &!< [inout] shortwave forcing data
-         tendPool        !< [inout] Tendency terms for all variables
+         tendPool,      &!< [inout] Tendency terms for all variables
+         diagnosticsPool !< [inout] tracer diagnostics
 
       integer :: &
          iCell, iEdge, k, n, &! loop counters for cell,edge,vert,tracer
@@ -528,7 +528,6 @@ contains
          indxTemp, indxSalt, &! tracer index for temperature, salinity
          nTracersGroup,      &! number of tracers in each tracer group
          nTracersEcosys,     &! number of ecosystem tracers
-         nBenthicVertLevels, &! number of benthic vertical grid levels
          nBenthicTracers      ! number of benthic tracers
 
       logical :: &
@@ -556,14 +555,15 @@ contains
          tracersTTDFieldsPool     ! transit time distribution
 
       ! benthos biogeochemistry
-         type (mpas_pool_type), pointer :: &
-         seafloorTracersPool    ! benthos tracers                     
-         seafloorTendPool       ! benthos tracer tendencies           
-         seafloorStoragePool    ! benthos tracer storage
+      type (mpas_pool_type), pointer :: &
+         seafloorTracersPool,  &! benthos tracers                     
+         seafloorTendPool,     &! benthos tracer tendencies           
+         seafloorStoragePool
 
       ! pointers for retrieving data from pools
       integer, pointer :: &
-         indexTemperature, indexSalinity ! tracer index for temp,salt
+         indexTemperature, indexSalinity, &! tracer index for temp,salt
+         nBenthicVertLevels ! number of benthic vertical grid levels
 
       logical, pointer :: & ! option configuration flags
          config_use_tracerGroup, &
@@ -1151,35 +1151,6 @@ contains
                                tracerGroupSurfaceFluxRunoff,  &
                                tracerGroupTend, err)
 
-         if (config_use_benthosTracers) then
-            call mpas_pool_get_array(tracersPool, 'ecosysTracers', ecosysTracers, timeLevel)
-            call mpas_pool_get_array(tracersPool, 'activeTracers', activeTracers, timeLevel)
-            call mpas_pool_get_array(seafloorTracersPool, 'benthosTracers', benthosTracers, timeLevel)
-            call mpas_pool_get_array(seafloorTracersPool, 'benthosPhPrev3d', benthosPhPrev3d, timeLevel)
-            call mpas_pool_get_array(seafloorTendPool, 'benthosTracersTend', benthosTracersTend)
-            call mpas_pool_get_array(seafloorStoragePool, 'benthosTracersStorage', benthosTracersStorage)
-            call mpas_pool_get_array(verticalMeshPool, 'benthosInterfaceLayerThickness', benthosInterfaceLayerThickness)
-
-            nBenthicTracers = size(benthosTracers, dim=1)
-
-            if (config_use_ecosysTracers) then
-               call mpas_pool_get_array(tracersPool, 'ecosysTracers', ecosysTracers, timeLevel)
-               call benthos_tracer_compute(benthosTracers, benthosPhPrev3d, benthosTracersStorage, &
-                  activeTracers, nBenthicTracers, benthosInterfaceLayerThickness, &
-                  nTracersEcosys, statePool, tendPool, diagnosticsPool, forcingPool, &
-                  nCellsSolve, nBenthicVertLevels, bottomDepth, density, maxLevelCell, &
-                  nVertLevels, layerThickness, indexTemperature, indexSalinity, benthosTracersTend, &
-                  dt, err, config_use_ecosysTracers, ecosysTracers)
-            else
-               call benthos_tracer_compute(benthosTracers, benthosPhPrev3d, benthosTracersStorage, &
-                  activeTracers, nBenthicTracers, benthosInterfaceLayerThickness, &
-                  nTracersEcosys, statePool, tendPool, diagnosticsPool, forcingPool, &
-                  nCellsSolve, nBenthicVertLevels, bottomDepth, density, maxLevelCell, &
-                  nVertLevels, layerThickness, indexTemperature, indexSalinity, benthosTracersTend,&
-                  dt, err, config_use_ecosysTracers)
-            end if
-         end if
-
          !
          ! Compute shortwave absorption
          !
@@ -1265,7 +1236,7 @@ contains
 
                if (computeBudgets) then
                   !$omp parallel
-                  !$omp do schedule(runtime)
+                  !$omp do schedule(runtime) private(k,n)
                   do iCell = 1, nCellsAll
                   do k = 1, nVertLevels
                   do n = 1, nTracersGroup
@@ -1291,6 +1262,52 @@ contains
       end if ! active only
       end if ! member is field
       end do ! loop over tracer groups
+
+      if (config_use_benthosTracers .and. .not.activeTracersOnly) then
+         call mpas_pool_get_array(tracersPool, 'ecosysTracers', ecosysTracers, timeLevel)
+         call mpas_pool_get_array(tracersPool, 'activeTracers', activeTracers, timeLevel)
+         call mpas_pool_get_array(seafloorTracersPool, 'benthosTracers', benthosTracers, timeLevel)
+         call mpas_pool_get_array(seafloorTracersPool, 'benthosPhPrev3d', benthosPhPrev3d, timeLevel)
+         call mpas_pool_get_array(seafloorTendPool, 'benthosTracersTend', benthosTracersTend)
+         call mpas_pool_get_array(seafloorStoragePool, 'benthosTracersStorage', benthosTracersStorage)
+         call mpas_pool_get_array(seafloorTendPool, 'benthosInterfaceLayerThickness', benthosInterfaceLayerThickness)
+         call mpas_pool_get_array(tracersPool, 'ecosysTracers', ecosysTracers, timeLevel)
+
+         nTracersEcosys = size(ecosysTracers, dim=1)
+         nBenthicTracers = size(benthosTracers, dim=1)
+         !                                                                                                                        
+         ! initialize benthos tracer tendencies to zero.                                                                
+         !                                                                                                                        
+         !$omp parallel
+         !$omp do schedule(runtime) private(k,n)
+         do iCell = 1, nCellsAll
+         do k=1,nBenthicVertLevels+1
+         do n=1,nBenthicTracers
+            benthosTracersTend(n,k,iCell) = 0.0_RKIND
+         end do
+         end do
+         end do
+
+         !$omp end do
+         !$omp end parallel
+
+         if (config_use_ecosysTracers) then
+            call mpas_pool_get_array(tracersPool, 'ecosysTracers', ecosysTracers, timeLevel)
+            call benthos_tracer_compute(benthosTracers, benthosPhPrev3d, benthosTracersStorage, &
+                 activeTracers, nBenthicTracers, benthosInterfaceLayerThickness, &
+                 nTracersEcosys, statePool, tendPool, diagnosticsPool, forcingPool, &
+                 nCellsAll, nBenthicVertLevels, bottomDepth, density, maxLevelCell, &
+                 nVertLevels, layerThickness, indexTemperature, indexSalinity, benthosTracersTend, &
+                 dt, err, config_use_ecosysTracers, ecosysTracers)
+         else
+             call benthos_tracer_compute(benthosTracers, benthosPhPrev3d, benthosTracersStorage, &
+                  activeTracers, nBenthicTracers, benthosInterfaceLayerThickness, &
+                  nTracersEcosys, statePool, tendPool, diagnosticsPool, forcingPool, &
+                  nCellsOwned, nBenthicVertLevels, bottomDepth, density, maxLevelCell, &
+                  nVertLevels, layerThickness, indexTemperature, indexSalinity, benthosTracersTend,&
+                  dt, err, config_use_ecosysTracers)
+         end if
+      end if
 
       deallocate(normalThicknessFlux)
 
